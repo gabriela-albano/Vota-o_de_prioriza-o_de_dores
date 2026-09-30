@@ -101,6 +101,34 @@
   button.primary:disabled{ opacity:.4; cursor:not-allowed; }
 
   .hint{ font-size:.82rem; color:var(--text-muted); margin-top:-8px; margin-bottom:18px; }
+
+  /* ---- Triagem (dot voting) ---- */
+  .contador-triagem{
+    position:sticky; top:0; z-index:5; background:var(--bg);
+    padding:10px 0 12px; text-align:center; margin-bottom:6px;
+  }
+  .contador-triagem .num{ font-family:'IBM Plex Mono',monospace; font-weight:700; font-size:1.2rem; }
+  .contador-triagem .num.cheio{ color:var(--coral); }
+  .contador-triagem .aviso{ font-size:.78rem; color:var(--coral); margin-top:2px; min-height:1.1em; }
+  .lista-triagem{ display:flex; flex-direction:column; gap:8px; }
+  .item-triagem{
+    display:flex; align-items:flex-start; gap:10px; cursor:pointer; user-select:none;
+    background:var(--surface); border:1.5px solid var(--line); border-radius:12px;
+    padding:12px 14px; transition:all .12s ease;
+  }
+  .item-triagem .marca{
+    flex:none; width:24px; height:24px; border-radius:50%; border:1.5px solid var(--line);
+    display:flex; align-items:center; justify-content:center; font-size:.85rem; color:transparent;
+    background:var(--surface); margin-top:1px;
+  }
+  .item-triagem.selecionada{ border-color:var(--coral); background:var(--coral-soft); }
+  .item-triagem.selecionada .marca{ background:var(--coral-fill); border-color:var(--coral-fill); color:#fff; }
+  .item-triagem .txt{ flex:1; font-size:.92rem; line-height:1.35; }
+  .item-triagem .txt .area-mini{
+    display:block; font-family:'IBM Plex Mono',monospace; font-size:.62rem; font-weight:600;
+    letter-spacing:.04em; text-transform:uppercase; color:var(--areacolor, var(--text-faint)); margin-bottom:3px;
+  }
+  #screen-dor.tempo-esgotado{ pointer-events:none; opacity:.55; }
   .screen{ display:none; }
   .screen.active{ display:block; }
   .center{ text-align:center; padding:50px 16px; }
@@ -163,6 +191,8 @@ let countdownInt = null;
 let DORES = []; // carregado do banco de dores (/api/catalogo) — só as marcadas como "selecionada" (usado na rodada completa)
 let CATALOGO_COMPLETO = []; // TODAS as dores do banco, inclusive as desmarcadas (usado na rodada de triagem)
 let modoAtual = "completa";
+let telaTriagemMontada = false;
+let tempoEsgotado = false;
 const respostasLocais = {}; // cache local só para refletir seleção já feita nesta sessão
 
 document.getElementById("logoCgpi").src = LOGO_CGPI;
@@ -177,11 +207,6 @@ async function carregarCatalogo() {
     CATALOGO_COMPLETO = [];
     DORES = [];
   }
-}
-
-// lista efetivamente em uso na etapa atual, conforme o modo
-function listaAtiva() {
-  return modoAtual === "triagem" ? CATALOGO_COMPLETO : DORES;
 }
 
 async function entrar() {
@@ -226,10 +251,22 @@ function aplicarEstado(estado) {
   const modoMudou = estado.modo !== modoAtual;
   modoAtual = estado.modo || "completa";
 
-  if (estado.etapa !== etapaRenderizada || modoMudou) {
-    etapaRenderizada = estado.etapa;
-    renderDorAtual(listaAtiva()[estado.etapa]);
-    trocarTela("screen-dor");
+  if (modoAtual === "triagem") {
+    // rodada de triagem é uma tela única (todas as dores juntas) — não avança
+    // por "etapa" como a rodada completa; só remonta se ainda não montou ou
+    // se acabou de trocar de modo.
+    if (modoMudou || !telaTriagemMontada) {
+      renderTelaTriagem();
+      telaTriagemMontada = true;
+      trocarTela("screen-dor");
+    }
+  } else {
+    telaTriagemMontada = false;
+    if (estado.etapa !== etapaRenderizada || modoMudou) {
+      etapaRenderizada = estado.etapa;
+      renderDorAtual(DORES[estado.etapa]);
+      trocarTela("screen-dor");
+    }
   }
 
   atualizarCronometro(estado);
@@ -244,7 +281,10 @@ function atualizarCronometro(estado) {
     if (!el) return;
     el.textContent = formatarTempo(restante);
     el.classList.toggle("acabando", restante <= 15);
-    document.querySelectorAll("#screen-dor input[type=radio]").forEach(i => i.disabled = restante <= 0);
+    tempoEsgotado = restante <= 0;
+    document.querySelectorAll("#screen-dor input[type=radio]").forEach(i => i.disabled = tempoEsgotado);
+    const container = document.getElementById("screen-dor");
+    if (container) container.classList.toggle("tempo-esgotado", tempoEsgotado);
     if (restante <= 0) clearInterval(countdownInt);
   };
   tick();
@@ -268,11 +308,6 @@ function corArea(area) {
 }
 
 function renderDorAtual(dor) {
-  if (modoAtual === "triagem") {
-    renderDorTriagem(dor);
-    return;
-  }
-
   const container = document.getElementById("screen-dor");
   const jaRespondido = respostasLocais[dor.id] || {};
   const { cor, bg } = corArea(dor.area);
@@ -304,36 +339,77 @@ function renderDorAtual(dor) {
   container.innerHTML = html;
 }
 
-// Tela da rodada de triagem: pergunta única, rápida, sim/não — usada para
-// decidir (com a ajuda do grupo) quais dores valem a rodada completa de
-// 3 critérios. Ver CRITERIO_TRIAGEM em dores.js.
-function renderDorTriagem(dor) {
+// Tela da rodada de triagem: TODAS as dores juntas numa lista, cada pessoa
+// marca no máximo ORCAMENTO_VOTOS_TRIAGEM delas (as que acha que merecem
+// seguir para a rodada completa) — dot voting simples, sem empilhar mais de
+// uma marcação na mesma dor. O resultado (nº de marcações) fica visível no
+// painel de admin para o facilitador decidir o corte.
+function renderTelaTriagem() {
   const container = document.getElementById("screen-dor");
-  const jaRespondido = respostasLocais[dor.id] || {};
-  const { cor, bg } = corArea(dor.area);
-  const valorAtual = jaRespondido[CRITERIO_TRIAGEM.id];
 
   let html = `<div class="timer-wrap"><div class="timer" id="timerAtual">--:--</div></div>`;
-  html += `<div class="card">
-    <span class="area" style="--areacolor:${cor};--areabg:${bg}">${dor.area}</span>
-    <h2>${dor.texto}</h2>
-    <div class="criterio">
-      <div class="titulo">${CRITERIO_TRIAGEM.titulo}</div>
-      <div class="pergunta">${CRITERIO_TRIAGEM.pergunta}</div>
-      <div class="escala" style="grid-template-columns:1fr 1fr">`;
-  CRITERIO_TRIAGEM.escala.forEach((label, i) => {
-    const valor = i + 1;
-    const checked = valorAtual === valor ? "checked" : "";
-    html += `<label>
-      <input type="radio" name="${dor.id}__triagem" value="${valor}" ${checked}
-        onchange="responder('${dor.id}','${CRITERIO_TRIAGEM.id}',${valor})" />
-      <span style="min-height:64px"><b style="font-size:1.3rem">${valor === 2 ? "✅" : "🚫"}</b>${label}</span>
-    </label>`;
+  html += `<div class="contador-triagem">
+    <div><span class="num" id="contadorTriagemNum">0</span> de ${ORCAMENTO_VOTOS_TRIAGEM} marcadas</div>
+    <div class="aviso" id="avisoTriagem"></div>
+  </div>`;
+  html += `<p style="text-align:center;color:var(--text-muted);font-size:.85rem;margin-top:-4px">
+    Marque até <b>${ORCAMENTO_VOTOS_TRIAGEM}</b> dores que você acha que merecem entrar na rodada completa de priorização.
+  </p>`;
+  html += `<div class="lista-triagem">`;
+  CATALOGO_COMPLETO.forEach(dor => {
+    const { cor } = corArea(dor.area);
+    const selecionada = !!(respostasLocais[dor.id] && respostasLocais[dor.id][TRIAGEM_CRITERIO_ID] === 1);
+    html += `<div class="item-triagem${selecionada ? " selecionada" : ""}" id="triagem-${dor.id}" onclick="alternarTriagem('${dor.id}')">
+      <div class="marca">✓</div>
+      <div class="txt"><span class="area-mini" style="--areacolor:${cor}">${dor.area}</span>${dor.texto}</div>
+    </div>`;
   });
-  html += `</div></div></div>`;
-  html += `<p style="text-align:center;color:var(--text-muted);font-size:.82rem">Voto rápido — serve só para triagem, não é a nota final da dor.</p>`;
+  html += `</div>`;
 
   container.innerHTML = html;
+  atualizarContadorTriagem();
+}
+
+function contarSelecionadasTriagem() {
+  let total = 0;
+  Object.values(respostasLocais).forEach(r => { if (r && r[TRIAGEM_CRITERIO_ID] === 1) total++; });
+  return total;
+}
+
+function atualizarContadorTriagem() {
+  const total = contarSelecionadasTriagem();
+  const numEl = document.getElementById("contadorTriagemNum");
+  const avisoEl = document.getElementById("avisoTriagem");
+  if (!numEl) return;
+  numEl.textContent = total;
+  const cheio = total >= ORCAMENTO_VOTOS_TRIAGEM;
+  numEl.classList.toggle("cheio", cheio);
+  if (avisoEl) avisoEl.textContent = cheio ? "Limite atingido — desmarque uma para trocar por outra." : "";
+}
+
+function alternarTriagem(doreId) {
+  if (tempoEsgotado) return;
+  const jaSelecionada = !!(respostasLocais[doreId] && respostasLocais[doreId][TRIAGEM_CRITERIO_ID] === 1);
+  if (!jaSelecionada && contarSelecionadasTriagem() >= ORCAMENTO_VOTOS_TRIAGEM) {
+    // já bateu o teto — ignora o clique numa dor ainda não marcada
+    const avisoEl = document.getElementById("avisoTriagem");
+    if (avisoEl) avisoEl.textContent = "Limite atingido — desmarque uma para trocar por outra.";
+    return;
+  }
+  if (!respostasLocais[doreId]) respostasLocais[doreId] = {};
+  const novoValor = jaSelecionada ? 0 : 1;
+  respostasLocais[doreId][TRIAGEM_CRITERIO_ID] = novoValor;
+
+  const el = document.getElementById("triagem-" + doreId);
+  if (el) el.classList.toggle("selecionada", novoValor === 1);
+  atualizarContadorTriagem();
+  atualizarProgresso();
+
+  fetch("/api/vote", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ nome: nomeAtual, doreId, criterioId: TRIAGEM_CRITERIO_ID, valor: novoValor }),
+  }).catch(() => { /* mantém a marcação local mesmo se a rede falhar num clique isolado */ });
 }
 
 async function responder(doreId, critId, valor) {
@@ -351,9 +427,14 @@ async function responder(doreId, critId, valor) {
 }
 
 function atualizarProgresso() {
-  const total = modoAtual === "triagem"
-    ? CATALOGO_COMPLETO.length
-    : DORES.length * CRITERIOS.length;
+  if (modoAtual === "triagem") {
+    const pct = ORCAMENTO_VOTOS_TRIAGEM
+      ? Math.round((contarSelecionadasTriagem() / ORCAMENTO_VOTOS_TRIAGEM) * 100)
+      : 0;
+    document.getElementById("progressBar").style.width = Math.min(pct, 100) + "%";
+    return;
+  }
+  const total = DORES.length * CRITERIOS.length;
   let feito = 0;
   Object.values(respostasLocais).forEach(r => { feito += Object.keys(r).length; });
   const pct = total ? Math.round((feito / total) * 100) : 0;
