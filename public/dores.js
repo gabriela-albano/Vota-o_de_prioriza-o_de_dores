@@ -33,6 +33,23 @@ const CRITERIOS = [
 // hora, no painel de admin, sem precisar editar este arquivo.
 const DURACAO_PADRAO_SEG = 120;
 
+// ----------------------------------------------------------------------------
+// MODO TRIAGEM: uma rodada rápida (voto sim/não) usada para ELIMINAR dores
+// antes da votação completa de 3 critérios — mitigação para quando o banco
+// de dores tem muitos itens (ex.: 32) e a rodada completa ficaria longa
+// demais / cansativa. Cada dor aparece por poucos segundos e a pessoa só
+// responde "mantém ou descarta". O resultado (% de "sim") fica visível no
+// painel de admin para o facilitador decidir quais ficam "selecionada" para
+// a rodada completa — o voto de triagem não decide isso sozinho.
+const CRITERIO_TRIAGEM = {
+  id: "triagem",
+  titulo: "Vale priorizar?",
+  pergunta: "Essa dor merece entrar na rodada completa de priorização (3 critérios)?",
+  escala: ["Não, deixar de fora", "Sim, manter"], // valor 1 = não, valor 2 = sim
+};
+
+const DURACAO_TRIAGEM_PADRAO_SEG = 20;
+
 // PIN simples para abrir o painel de admin (não é segurança de verdade,
 // só evita que alguém abra o link por engano). Troque antes de publicar.
 const ADMIN_PIN = "cgpi2026";
