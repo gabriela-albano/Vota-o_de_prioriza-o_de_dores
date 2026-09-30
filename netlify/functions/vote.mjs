@@ -21,7 +21,9 @@ export default async (req) => {
   if (!nome || typeof nome !== "string" || !nome.trim()) {
     return new Response(JSON.stringify({ error: "Nome ausente." }), { status: 400 });
   }
-  if (!doreId || !criterioId || ![1, 2, 3, 4].includes(Number(valor))) {
+  // valores 1-4 são as escalas normais dos critérios C1/C2/C3; o valor 0 é
+  // usado só pela triagem (dot voting), para registrar "desmarquei essa dor".
+  if (!doreId || !criterioId || ![0, 1, 2, 3, 4].includes(Number(valor))) {
     return new Response(JSON.stringify({ error: "Resposta inválida." }), { status: 400 });
   }
 
