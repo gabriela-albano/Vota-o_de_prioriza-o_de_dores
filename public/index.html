@@ -114,6 +114,7 @@
 <body>
 <div class="wrap">
   <header class="top">
+    <img src="" id="logoCgpi" alt="Logo CGPI" style="height:40px;margin-bottom:10px" />
     <div class="brand">CGPI · Sefaz-SP</div>
     <h1>Votação de Priorização de Dores</h1>
     <p>Avalie cada dor nos 3 critérios, quando ela aparecer na tela</p>
@@ -159,12 +160,26 @@ let nomeAtual = "";
 let etapaRenderizada = null;
 let poll = null;
 let countdownInt = null;
+let DORES = []; // carregado do banco de dores (/api/catalogo) — só as marcadas como "selecionada"
 const respostasLocais = {}; // cache local só para refletir seleção já feita nesta sessão
 
-function entrar() {
+document.getElementById("logoCgpi").src = LOGO_CGPI;
+
+async function carregarCatalogo() {
+  try {
+    const res = await fetch("/api/catalogo");
+    const data = await res.json();
+    DORES = (data.dores || []).filter(d => d.selecionada !== false);
+  } catch (e) {
+    DORES = [];
+  }
+}
+
+async function entrar() {
   const nome = document.getElementById("inputNome").value.trim();
   if (!nome) { alert("Digite seu nome para continuar."); return; }
   nomeAtual = nome;
+  await carregarCatalogo();
   trocarTela("screen-aguardando");
   iniciarPolling();
 }
