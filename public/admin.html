@@ -113,9 +113,12 @@
 
 <div class="wrap hidden" id="painel">
   <header>
-    <div>
-      <div class="brand">CGPI · Sefaz-SP</div>
-      <h1>Painel de Apuração — Votação de Priorização</h1>
+    <div style="display:flex;align-items:center;gap:12px">
+      <img src="" id="logoCgpi" alt="Logo CGPI" style="height:38px" />
+      <div>
+        <div class="brand">CGPI · Sefaz-SP</div>
+        <h1>Painel de Apuração — Votação de Priorização</h1>
+      </div>
     </div>
   </header>
   <div class="status no-print" id="status">Carregando…</div>
@@ -147,6 +150,35 @@
       <button class="danger" onclick="encerrar()">■ Encerrar votação</button>
       <button class="ghost" onclick="reiniciarEtapas()">↺ Reiniciar etapas</button>
       <button class="danger" onclick="resetarVotos()">🗑 Zerar TODOS os votos (só antes do dia real)</button>
+    </div>
+  </div>
+
+  <!-- GERENCIAR DORES (banco editável) -->
+  <div class="panel no-print">
+    <h3>Gerenciar dores (banco editável)</h3>
+    <p style="color:var(--text-muted);font-size:.82rem;margin-top:-6px">
+      Marque quais dores participam desta rodada, edite o texto/área de qualquer uma, ou adicione novas. Quem estiver desmarcada não aparece na votação nem no modo guiado — mas continua salva aqui, dá para reativar depois.
+    </p>
+    <div class="controle-topo" style="margin-top:10px">
+      <button class="ghost" onclick="selecionarTodas(true)">☑ Selecionar todas</button>
+      <button class="ghost" onclick="selecionarTodas(false)">☐ Desmarcar todas</button>
+      <button class="ghost" onclick="adicionarDor()">➕ Adicionar dor</button>
+      <button class="primary" onclick="salvarCatalogo()">💾 Salvar alterações</button>
+      <span id="catalogoStatus" style="font-size:.8rem;color:var(--text-muted)"></span>
+    </div>
+    <div style="overflow-x:auto">
+      <table>
+        <thead>
+          <tr>
+            <th style="width:36px">Ativa</th>
+            <th style="width:130px">Área</th>
+            <th>Texto da dor</th>
+            <th style="width:80px">Transv.</th>
+            <th style="width:40px"></th>
+          </tr>
+        </thead>
+        <tbody id="catalogoBody"></tbody>
+      </table>
     </div>
   </div>
 
@@ -202,6 +234,10 @@
 <script>
 let estadoAtual = { etapa: -1, duracaoSeg: 120, iniciadoEm: null };
 let tickInt = null;
+let CATALOGO = []; // todas as dores cadastradas (banco), inclusive as desmarcadas
+let DORES = [];    // só as marcadas como "selecionada" — usadas no modo guiado e nos resultados
+
+document.getElementById("logoCgpi").src = LOGO_CGPI;
 
 function checarPin() {
   const pin = document.getElementById("pin").value;
@@ -209,12 +245,113 @@ function checarPin() {
     document.getElementById("lock").classList.add("hidden");
     document.getElementById("painel").classList.remove("hidden");
     document.getElementById("duracaoInput").value = DURACAO_PADRAO_SEG;
+    carregarCatalogo();
     carregar();
     carregarEstado();
     setInterval(carregar, 4000);
     setInterval(carregarEstado, 2000);
   } else {
     alert("PIN incorreto.");
+  }
+}
+
+// ---------- banco de dores (catálogo editável) ----------
+
+async function carregarCatalogo() {
+  try {
+    const res = await fetch("/api/catalogo");
+    const data = await res.json();
+    CATALOGO = data.dores || [];
+    DORES = CATALOGO.filter(d => d.selecionada !== false);
+    renderCatalogo();
+  } catch (e) {
+    document.getElementById("catalogoStatus").textContent = "Erro ao carregar o banco de dores.";
+  }
+}
+
+function renderCatalogo() {
+  const tbody = document.getElementById("catalogoBody");
+  tbody.innerHTML = CATALOGO.map((d, i) => `
+    <tr>
+      <td style="text-align:center">
+        <input type="checkbox" ${d.selecionada !== false ? "checked" : ""} onchange="editarCampo(${i},'selecionada',this.checked)" />
+      </td>
+      <td>
+        <input type="text" value="${escapeAttr(d.area)}" style="width:100%;font:inherit;padding:6px 8px;border-radius:8px;border:1.5px solid var(--line);background:var(--surface);color:var(--text)"
+          onchange="editarCampo(${i},'area',this.value)" />
+      </td>
+      <td>
+        <textarea style="width:100%;font:inherit;padding:6px 8px;border-radius:8px;border:1.5px solid var(--line);background:var(--surface);color:var(--text);resize:vertical;min-height:40px"
+          onchange="editarCampo(${i},'texto',this.value)">${escapeHtml(d.texto)}</textarea>
+      </td>
+      <td style="text-align:center">
+        <input type="checkbox" ${d.transversal ? "checked" : ""} onchange="editarCampo(${i},'transversal',this.checked)" />
+      </td>
+      <td style="text-align:center">
+        <button class="danger" style="padding:6px 10px" onclick="removerDor(${i})" title="Remover">🗑</button>
+      </td>
+    </tr>
+  `).join("");
+  document.getElementById("catalogoStatus").textContent =
+    CATALOGO.filter(d => d.selecionada !== false).length + " de " + CATALOGO.length + " dores ativas nesta rodada";
+}
+
+function escapeHtml(s) {
+  return String(s || "").replace(/[&<>]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c]));
+}
+function escapeAttr(s) {
+  return escapeHtml(s).replace(/"/g, "&quot;");
+}
+
+function editarCampo(i, campo, valor) {
+  CATALOGO[i][campo] = valor;
+  if (campo === "selecionada") {
+    document.getElementById("catalogoStatus").textContent =
+      CATALOGO.filter(d => d.selecionada !== false).length + " de " + CATALOGO.length + " dores ativas nesta rodada — lembre de Salvar";
+  }
+}
+
+function selecionarTodas(valor) {
+  CATALOGO.forEach(d => d.selecionada = valor);
+  renderCatalogo();
+}
+
+function adicionarDor() {
+  CATALOGO.push({
+    id: "dor-nova-" + Date.now(),
+    area: "",
+    texto: "",
+    transversal: false,
+    selecionada: true,
+  });
+  renderCatalogo();
+  const tbody = document.getElementById("catalogoBody");
+  tbody.scrollIntoView({ behavior: "smooth", block: "end" });
+}
+
+function removerDor(i) {
+  if (!confirm("Remover esta dor do banco? Isso não apaga votos já registrados para ela, mas ela some da lista e da próxima rodada.")) return;
+  CATALOGO.splice(i, 1);
+  renderCatalogo();
+}
+
+async function salvarCatalogo() {
+  // limpa dores em branco antes de salvar (ex.: "+ Adicionar dor" esquecida sem texto)
+  const dores = CATALOGO.filter(d => (d.texto || "").trim().length > 0);
+  try {
+    const res = await fetch("/api/catalogo", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ dores }),
+    });
+    const data = await res.json();
+    CATALOGO = data.dores || dores;
+    DORES = CATALOGO.filter(d => d.selecionada !== false);
+    renderCatalogo();
+    document.getElementById("catalogoStatus").textContent += " · salvo ✅";
+    carregar();
+  } catch (e) {
+    document.getElementById("catalogoStatus").textContent = "Erro ao salvar. Tente de novo.";
   }
 }
 
