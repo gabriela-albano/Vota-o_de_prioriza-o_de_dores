@@ -160,7 +160,9 @@ let nomeAtual = "";
 let etapaRenderizada = null;
 let poll = null;
 let countdownInt = null;
-let DORES = []; // carregado do banco de dores (/api/catalogo) — só as marcadas como "selecionada"
+let DORES = []; // carregado do banco de dores (/api/catalogo) — só as marcadas como "selecionada" (usado na rodada completa)
+let CATALOGO_COMPLETO = []; // TODAS as dores do banco, inclusive as desmarcadas (usado na rodada de triagem)
+let modoAtual = "completa";
 const respostasLocais = {}; // cache local só para refletir seleção já feita nesta sessão
 
 document.getElementById("logoCgpi").src = LOGO_CGPI;
@@ -169,10 +171,17 @@ async function carregarCatalogo() {
   try {
     const res = await fetch("/api/catalogo");
     const data = await res.json();
-    DORES = (data.dores || []).filter(d => d.selecionada !== false);
+    CATALOGO_COMPLETO = data.dores || [];
+    DORES = CATALOGO_COMPLETO.filter(d => d.selecionada !== false);
   } catch (e) {
+    CATALOGO_COMPLETO = [];
     DORES = [];
   }
+}
+
+// lista efetivamente em uso na etapa atual, conforme o modo
+function listaAtiva() {
+  return modoAtual === "triagem" ? CATALOGO_COMPLETO : DORES;
 }
 
 async function entrar() {
@@ -214,9 +223,12 @@ function aplicarEstado(estado) {
     return;
   }
 
-  if (estado.etapa !== etapaRenderizada) {
+  const modoMudou = estado.modo !== modoAtual;
+  modoAtual = estado.modo || "completa";
+
+  if (estado.etapa !== etapaRenderizada || modoMudou) {
     etapaRenderizada = estado.etapa;
-    renderDorAtual(DORES[estado.etapa]);
+    renderDorAtual(listaAtiva()[estado.etapa]);
     trocarTela("screen-dor");
   }
 
@@ -256,6 +268,11 @@ function corArea(area) {
 }
 
 function renderDorAtual(dor) {
+  if (modoAtual === "triagem") {
+    renderDorTriagem(dor);
+    return;
+  }
+
   const container = document.getElementById("screen-dor");
   const jaRespondido = respostasLocais[dor.id] || {};
   const { cor, bg } = corArea(dor.area);
@@ -287,6 +304,38 @@ function renderDorAtual(dor) {
   container.innerHTML = html;
 }
 
+// Tela da rodada de triagem: pergunta única, rápida, sim/não — usada para
+// decidir (com a ajuda do grupo) quais dores valem a rodada completa de
+// 3 critérios. Ver CRITERIO_TRIAGEM em dores.js.
+function renderDorTriagem(dor) {
+  const container = document.getElementById("screen-dor");
+  const jaRespondido = respostasLocais[dor.id] || {};
+  const { cor, bg } = corArea(dor.area);
+  const valorAtual = jaRespondido[CRITERIO_TRIAGEM.id];
+
+  let html = `<div class="timer-wrap"><div class="timer" id="timerAtual">--:--</div></div>`;
+  html += `<div class="card">
+    <span class="area" style="--areacolor:${cor};--areabg:${bg}">${dor.area}</span>
+    <h2>${dor.texto}</h2>
+    <div class="criterio">
+      <div class="titulo">${CRITERIO_TRIAGEM.titulo}</div>
+      <div class="pergunta">${CRITERIO_TRIAGEM.pergunta}</div>
+      <div class="escala" style="grid-template-columns:1fr 1fr">`;
+  CRITERIO_TRIAGEM.escala.forEach((label, i) => {
+    const valor = i + 1;
+    const checked = valorAtual === valor ? "checked" : "";
+    html += `<label>
+      <input type="radio" name="${dor.id}__triagem" value="${valor}" ${checked}
+        onchange="responder('${dor.id}','${CRITERIO_TRIAGEM.id}',${valor})" />
+      <span style="min-height:64px"><b style="font-size:1.3rem">${valor === 2 ? "✅" : "🚫"}</b>${label}</span>
+    </label>`;
+  });
+  html += `</div></div></div>`;
+  html += `<p style="text-align:center;color:var(--text-muted);font-size:.82rem">Voto rápido — serve só para triagem, não é a nota final da dor.</p>`;
+
+  container.innerHTML = html;
+}
+
 async function responder(doreId, critId, valor) {
   if (!respostasLocais[doreId]) respostasLocais[doreId] = {};
   respostasLocais[doreId][critId] = valor;
@@ -302,7 +351,9 @@ async function responder(doreId, critId, valor) {
 }
 
 function atualizarProgresso() {
-  const total = DORES.length * CRITERIOS.length;
+  const total = modoAtual === "triagem"
+    ? CATALOGO_COMPLETO.length
+    : DORES.length * CRITERIOS.length;
   let feito = 0;
   Object.values(respostasLocais).forEach(r => { feito += Object.keys(r).length; });
   const pct = total ? Math.round((feito / total) * 100) : 0;
