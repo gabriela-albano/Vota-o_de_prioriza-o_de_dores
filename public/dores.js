@@ -34,21 +34,21 @@ const CRITERIOS = [
 const DURACAO_PADRAO_SEG = 120;
 
 // ----------------------------------------------------------------------------
-// MODO TRIAGEM: uma rodada rápida (voto sim/não) usada para ELIMINAR dores
-// antes da votação completa de 3 critérios — mitigação para quando o banco
-// de dores tem muitos itens (ex.: 32) e a rodada completa ficaria longa
-// demais / cansativa. Cada dor aparece por poucos segundos e a pessoa só
-// responde "mantém ou descarta". O resultado (% de "sim") fica visível no
-// painel de admin para o facilitador decidir quais ficam "selecionada" para
-// a rodada completa — o voto de triagem não decide isso sozinho.
-const CRITERIO_TRIAGEM = {
-  id: "triagem",
-  titulo: "Vale priorizar?",
-  pergunta: "Essa dor merece entrar na rodada completa de priorização (3 critérios)?",
-  escala: ["Não, deixar de fora", "Sim, manter"], // valor 1 = não, valor 2 = sim
-};
+// MODO TRIAGEM: uma rodada de "dot voting" (voto por pontinho) usada para
+// ELIMINAR dores antes da votação completa de 3 critérios — mitigação para
+// quando o banco de dores tem muitos itens (ex.: 32) e a rodada completa
+// ficaria longa/cansativa demais. Todas as dores aparecem juntas numa lista
+// só; cada pessoa marca, no máximo, ORCAMENTO_VOTOS_TRIAGEM delas (as que
+// acha que merecem seguir) — sem empilhar mais de uma marcação na mesma
+// dor. O resultado (nº de marcações por dor) fica visível no painel de
+// admin para o facilitador decidir o corte e aplicá-lo em "Gerenciar
+// dores" — o voto de triagem não decide isso sozinho.
+const TRIAGEM_CRITERIO_ID = "triagem"; // chave usada em respostas[doreId][...] para o voto de triagem
+const ORCAMENTO_VOTOS_TRIAGEM = 9; // quantas dores cada pessoa pode marcar na rodada de eliminação
 
-const DURACAO_TRIAGEM_PADRAO_SEG = 20;
+// Duração da rodada de triagem inteira (não é por dor — é um tempo único
+// para a pessoa distribuir todas as marcações). Dá para mudar no painel.
+const DURACAO_TRIAGEM_PADRAO_SEG = 180;
 
 // PIN simples para abrir o painel de admin (não é segurança de verdade,
 // só evita que alguém abra o link por engano). Troque antes de publicar.
