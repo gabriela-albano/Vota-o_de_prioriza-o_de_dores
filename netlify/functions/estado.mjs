@@ -5,7 +5,10 @@ import { getStore } from "@netlify/blobs";
 //   etapa: -1 (ainda não começou) | número (índice da dor atual) | "fim"
 //   duracaoSeg: quantos segundos essa etapa dura
 //   iniciadoEm: timestamp (ms) de quando essa etapa começou a contar
-const DEFAULT_STATE = { etapa: -1, duracaoSeg: 120, iniciadoEm: null };
+//   modo: "completa" (3 critérios, só nas dores "selecionada") | "triagem"
+//         (voto rápido sim/não, sobre TODAS as dores do banco, para decidir
+//         quais entram na rodada completa)
+const DEFAULT_STATE = { etapa: -1, duracaoSeg: 120, iniciadoEm: null, modo: "completa" };
 
 export default async (req) => {
   const store = getStore("votacao-priorizacao-estado");
@@ -26,7 +29,7 @@ export default async (req) => {
       return new Response(JSON.stringify({ error: "JSON inválido." }), { status: 400 });
     }
 
-    const { etapa, duracaoSeg } = body || {};
+    const { etapa, duracaoSeg, modo } = body || {};
     if (etapa === undefined) {
       return new Response(JSON.stringify({ error: "Campo 'etapa' ausente." }), { status: 400 });
     }
@@ -35,6 +38,7 @@ export default async (req) => {
       etapa,
       duracaoSeg: Number(duracaoSeg) || DEFAULT_STATE.duracaoSeg,
       iniciadoEm: Date.now(),
+      modo: modo === "triagem" ? "triagem" : "completa",
     };
     await store.setJSON("estado", novoEstado);
 
