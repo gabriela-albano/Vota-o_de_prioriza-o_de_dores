@@ -17,7 +17,7 @@ export default async (req) => {
   // Também volta o modo guiado para "não iniciado", para não ficar preso
   // numa etapa antiga depois de zerar os votos de teste.
   const estadoStore = getStore("votacao-priorizacao-estado");
-  await estadoStore.setJSON("estado", { etapa: -1, duracaoSeg: 120, iniciadoEm: null });
+  await estadoStore.setJSON("estado", { etapa: -1, duracaoSeg: 120, iniciadoEm: null, modo: "completa" });
 
   return new Response(JSON.stringify({ ok: true, removidos: blobs.length }), {
     status: 200,
