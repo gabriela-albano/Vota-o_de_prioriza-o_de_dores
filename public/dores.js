@@ -50,6 +50,22 @@ const ORCAMENTO_VOTOS_TRIAGEM = 9; // quantas dores cada pessoa pode marcar na r
 // para a pessoa distribuir todas as marcações). Dá para mudar no painel.
 const DURACAO_TRIAGEM_PADRAO_SEG = 180;
 
+// ----------------------------------------------------------------------------
+// PESO POR ALCANCE (dores transversais): cada voto/marcação numa dor vale
+// mais quanto mais processos (PJ/PF/EF) ela atravessa — 1 processo só = peso
+// normal, 2 processos = ×1,2, os 3 processos = ×1,3. Usado tanto na
+// contagem da triagem (pontos, não só nº de marcações) quanto no score final
+// da rodada completa — a mesma régua nas duas rodadas, para o resultado ser
+// consistente do início ao fim. A classificação de quantos processos cada
+// dor atravessa vem do campo "processos" de cada dor no banco (editável em
+// "Gerenciar dores"), nunca presumida a partir do texto.
+function multiplicadorProcessos(qtdProcessos) {
+  if (qtdProcessos >= 3) return 1.3;
+  if (qtdProcessos === 2) return 1.2;
+  return 1.0;
+}
+const PROCESSOS_VALIDOS = ["PJ", "PF", "EF"];
+
 // PIN simples para abrir o painel de admin (não é segurança de verdade,
 // só evita que alguém abra o link por engano). Troque antes de publicar.
 const ADMIN_PIN = "cgpi2026";
