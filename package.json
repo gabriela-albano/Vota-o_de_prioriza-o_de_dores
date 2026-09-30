@@ -1,0 +1,9 @@
+{
+  "name": "votacao-priorizacao-cgpi",
+  "version": "1.0.0",
+  "private": true,
+  "description": "App de votação de priorização de dores (CGPI) - voto por critério (C1/C2/C3) com painel de apuração por moda",
+  "dependencies": {
+    "@netlify/blobs": "^8.1.0"
+  }
+}

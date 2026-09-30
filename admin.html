@@ -1,0 +1,497 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Painel de Apuração — CGPI</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Public+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#F3F5F9; --surface:#FFFFFF; --surface-2:#EAEDF4; --surface-3:#DFE3ED;
+    --text:#1E2438; --text-muted:#5A6178; --text-faint:#8991A6;
+    --line:#DCE0EA;
+    --navy:#2A3352; --navy-ink:#1B2140;
+    --gold:#B8860F; --gold-fill:#FBC513; --gold-soft:#FCEBB0;
+    --coral:#B93A2A; --coral-fill:#D54B40; --coral-soft:#F6D6D1;
+    --azul-brand:#2C82CC;
+    --ok:#3E8A4E; --ok-bg:#E1F1E4;
+    --pj:#B96A44; --pf:#2E8484; --ef:#4A5A8C; --cross:#7C5295;
+    --shadow: 0 1px 2px rgba(30,36,56,.06), 0 8px 24px -12px rgba(30,36,56,.18);
+    --radius: 14px;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --bg:#12162A; --surface:#191F38; --surface-2:#212843; --surface-3:#2B3350;
+      --text:#E9EBF4; --text-muted:#AEB4CC; --text-faint:#7D84A0;
+      --line:#333B5C;
+      --navy:#AEBBE8; --navy-ink:#EEF1FB;
+      --gold:#FFD84D; --gold-fill:#FFD84D; --gold-soft:#4A3E12;
+      --coral:#FF8577; --coral-fill:#FF6F5C; --coral-soft:#4A2320;
+      --azul-brand:#6FB3EE;
+      --ok:#8FDB9E; --ok-bg:#1E3A24;
+      --pj:#E0967A; --pf:#6BC0C0; --ef:#A8B4E0; --cross:#B893DE;
+      --shadow: 0 1px 2px rgba(0,0,0,.3), 0 12px 28px -14px rgba(0,0,0,.55);
+    }
+  }
+  *{box-sizing:border-box;}
+  body{ margin:0; background:var(--bg); color:var(--text); font-family:'Public Sans', -apple-system, sans-serif; }
+  h1,h2,h3{ font-family:'Fraunces', Georgia, serif; }
+  .mono{ font-family:'IBM Plex Mono', monospace; }
+  .wrap{ max-width:1080px; margin:0 auto; padding:24px 16px 80px; }
+
+  header{ display:flex; justify-content:space-between; align-items:baseline; flex-wrap:wrap; gap:8px; margin-bottom:6px; }
+  header .brand{ font-family:'IBM Plex Mono',monospace; font-size:.7rem; letter-spacing:.08em; text-transform:uppercase; color:var(--text-faint); }
+  header h1{ font-size:1.3rem; margin:4px 0 0; font-weight:600; }
+  .status{ font-size:.82rem; color:var(--text-muted); margin-bottom:20px; }
+
+  .panel{
+    background:var(--surface); border:1px solid var(--line); border-radius:var(--radius);
+    padding:18px 20px; margin-bottom:20px; box-shadow:var(--shadow);
+  }
+  .panel h3{ margin:0 0 12px; font-size:1rem; font-weight:600; }
+
+  .controle-topo{ display:flex; flex-wrap:wrap; gap:14px; align-items:center; margin-bottom:14px; }
+  .controle-topo label{ font-size:.85rem; color:var(--text-muted); display:flex; align-items:center; gap:6px; }
+  .controle-topo input[type="number"]{ width:70px; padding:6px 8px; border-radius:8px; border:1.5px solid var(--line); font:inherit; background:var(--surface); color:var(--text); }
+
+  .dor-atual{ background:var(--surface-2); border-radius:10px; padding:14px 16px; margin-bottom:14px; }
+  .dor-atual .rotulo{ font-size:.72rem; text-transform:uppercase; letter-spacing:.04em; color:var(--text-faint); margin-bottom:4px; }
+  .dor-atual .texto{ font-weight:600; font-size:1rem; }
+  .dor-atual .timer{ font-family:'IBM Plex Mono',monospace; font-size:1.3rem; font-weight:700; color:var(--coral); float:right; }
+
+  .botoes{ display:flex; gap:10px; flex-wrap:wrap; }
+  button{ font:inherit; cursor:pointer; border:none; border-radius:8px; padding:10px 16px; font-weight:600; }
+  button.primary{ background:var(--coral-fill); color:#fff; }
+  button.ghost{ background:transparent; border:1.5px solid var(--line); color:var(--text-muted); }
+  button.danger{ background:var(--coral-soft); color:var(--coral); }
+  button:disabled{ opacity:.4; cursor:not-allowed; }
+
+  table{ width:100%; border-collapse:collapse; background:var(--surface); border-radius:12px; overflow:hidden; }
+  thead th{ text-align:left; font-size:.68rem; text-transform:uppercase; letter-spacing:.04em; color:var(--text-faint); padding:10px 12px; border-bottom:1px solid var(--line); }
+  tbody td{ padding:12px; border-bottom:1px solid var(--line); font-size:.88rem; vertical-align:top; }
+  tbody tr:last-child td{ border-bottom:none; }
+  .dor-texto{ max-width:320px; }
+  .area-tag{
+    display:inline-block; font-family:'IBM Plex Mono',monospace; font-size:.64rem; font-weight:600; text-transform:uppercase;
+    color:var(--areacolor); background:var(--areabg); padding:2px 7px; border-radius:999px; margin-bottom:4px;
+  }
+  .criterio-cell{ text-align:center; }
+  .moda{ font-size:1.05rem; font-weight:700; }
+  .moda.empate{ color:var(--gold); }
+  .dist{ font-size:.66rem; color:var(--text-muted); margin-top:2px; }
+  .score{ font-weight:700; font-size:1rem; }
+  .score.alto{ color:var(--ok); }
+  .transversal-badge{ font-size:.62rem; background:var(--surface-2); color:var(--cross); padding:1px 6px; border-radius:6px; margin-left:6px; }
+  .votos-count{ font-size:.8rem; color:var(--text-muted); }
+
+  .lock-screen{ max-width:360px; margin:80px auto; text-align:center; }
+  .lock-screen input{ width:100%; padding:12px; border-radius:10px; border:1.5px solid var(--line); font:inherit; margin-bottom:12px; background:var(--surface); color:var(--text); }
+  .lock-screen button{ width:100%; background:var(--coral-fill); color:#fff; padding:12px; }
+  .hidden{ display:none; }
+
+  .legenda{ display:flex; gap:16px; flex-wrap:wrap; font-size:.78rem; color:var(--text-muted); margin-top:10px; }
+  .legenda span{ display:inline-flex; align-items:center; gap:5px; }
+  .legenda i{ width:9px; height:9px; border-radius:50%; display:inline-block; }
+
+  .export-bar{ display:flex; gap:10px; flex-wrap:wrap; margin-bottom:16px; }
+  button.export{ background:var(--navy); color:#fff; }
+  .print-only{ display:none; }
+
+  @media print {
+    body{ background:#fff; }
+    .no-print{ display:none !important; }
+    .print-only{ display:block; }
+    .panel{ box-shadow:none; border:1px solid #ccc; break-inside:avoid; }
+    tbody tr{ break-inside:avoid; }
+    .wrap{ max-width:100%; padding:0; }
+    #heatmap svg{ max-width:100% !important; }
+  }
+</style>
+</head>
+<body>
+
+<div class="wrap hidden" id="painel">
+  <header>
+    <div>
+      <div class="brand">CGPI · Sefaz-SP</div>
+      <h1>Painel de Apuração — Votação de Priorização</h1>
+    </div>
+  </header>
+  <div class="status no-print" id="status">Carregando…</div>
+
+  <!-- Cabeçalho só para o PDF/impressão -->
+  <div class="print-only" style="margin-bottom:20px;padding-bottom:10px;border-bottom:2px solid #1E2438">
+    <div style="font-family:'IBM Plex Mono',monospace;font-size:.7rem;letter-spacing:.08em;text-transform:uppercase;color:#5A6178">CGPI · Sefaz-SP</div>
+    <div style="font-family:'Fraunces',Georgia,serif;font-size:1.3rem;font-weight:600">Votação de Priorização de Dores — Relatório</div>
+    <div id="printMeta" style="font-size:.85rem;color:#5A6178;margin-top:4px"></div>
+  </div>
+
+  <!-- CONTROLE DO MODO GUIADO -->
+  <div class="panel no-print">
+    <h3>Controle da votação (modo guiado)</h3>
+    <div class="controle-topo">
+      <label>Duração por dor (seg): <input type="number" id="duracaoInput" value="120" min="15" step="15" /></label>
+      <button class="ghost" onclick="carregar()">Atualizar painel agora</button>
+    </div>
+
+    <div class="dor-atual" id="dorAtualBox">
+      <div class="rotulo">Nenhuma votação em andamento</div>
+      <div class="texto">—</div>
+    </div>
+
+    <div class="botoes">
+      <button class="primary" onclick="iniciar()">▶ Iniciar (dor 1)</button>
+      <button class="primary" onclick="proxima()">⏭ Próxima dor</button>
+      <button class="ghost" onclick="estender()">+30s</button>
+      <button class="danger" onclick="encerrar()">■ Encerrar votação</button>
+      <button class="ghost" onclick="reiniciarEtapas()">↺ Reiniciar etapas</button>
+      <button class="danger" onclick="resetarVotos()">🗑 Zerar TODOS os votos (só antes do dia real)</button>
+    </div>
+  </div>
+
+  <!-- RESULTADOS -->
+  <div class="panel">
+    <div class="export-bar no-print">
+      <button class="export" onclick="exportarPDF()">📄 Baixar relatório em PDF</button>
+      <button class="export" onclick="exportarHeatmapPNG()">🖼️ Baixar mapa de calor (PNG)</button>
+    </div>
+    <h3>Resultados por dor</h3>
+    <table>
+      <thead>
+        <tr>
+          <th>Dor</th>
+          <th class="criterio-cell">C1 · Consequência<br/><span style="font-weight:400">(×3)</span></th>
+          <th class="criterio-cell">C2 · Retrabalho<br/><span style="font-weight:400">(×2)</span></th>
+          <th class="criterio-cell">C3 · Automação<br/><span style="font-weight:400">(×1)</span></th>
+          <th class="criterio-cell">Score</th>
+          <th>Votos</th>
+        </tr>
+      </thead>
+      <tbody id="tbody"></tbody>
+    </table>
+    <p style="color:var(--text-muted);font-size:.8rem;margin-top:14px">
+      Score = (moda C1 × 3) + (moda C2 × 2) + (moda C3 × 1), com bônus ×1,3 para dores transversais — mesma fórmula da Ferramenta de Priorização de Processos do app. "*" ao lado do número indica empate na moda; a distribuição completa (quantos votaram 1/2/3/4) aparece abaixo de cada valor.
+    </p>
+  </div>
+
+  <!-- MAPA DE CALOR (PREVIEW) -->
+  <div class="panel">
+    <h3>Mapa de calor (prévia)</h3>
+    <p style="color:var(--text-muted);font-size:.82rem;margin-top:-4px">
+      Eixo vertical = score total · eixo horizontal = potencial de automação (C3) — os mesmos eixos da Ferramenta de Priorização do app. Os cortes dos quadrantes aqui são um valor de referência (meio da escala), só para orientar a conversa ao vivo. Não confirmei se são exatamente os mesmos limiares numéricos usados dentro da ferramenta oficial — para o registro final e a comparação com outras análises da CGPI ao longo do tempo, alimente a Ferramenta de Priorização do app com estas mesmas modas.
+    </p>
+    <div id="heatmap" style="margin-top:10px"></div>
+    <div class="legenda">
+      <span><i style="background:var(--pj)"></i> PJ</span>
+      <span><i style="background:var(--pf)"></i> PF</span>
+      <span><i style="background:var(--ef)"></i> EF</span>
+      <span><i style="background:var(--cross)"></i> Transversal</span>
+    </div>
+  </div>
+</div>
+
+<div class="lock-screen" id="lock">
+  <h2>Painel de Apuração</h2>
+  <p style="color:var(--text-muted);font-size:.9rem">Acesso restrito ao facilitador.</p>
+  <input type="password" id="pin" placeholder="PIN" />
+  <button onclick="checarPin()">Entrar</button>
+</div>
+
+<script src="dores.js"></script>
+<script>
+let estadoAtual = { etapa: -1, duracaoSeg: 120, iniciadoEm: null };
+let tickInt = null;
+
+function checarPin() {
+  const pin = document.getElementById("pin").value;
+  if (pin === ADMIN_PIN) {
+    document.getElementById("lock").classList.add("hidden");
+    document.getElementById("painel").classList.remove("hidden");
+    document.getElementById("duracaoInput").value = DURACAO_PADRAO_SEG;
+    carregar();
+    carregarEstado();
+    setInterval(carregar, 4000);
+    setInterval(carregarEstado, 2000);
+  } else {
+    alert("PIN incorreto.");
+  }
+}
+
+// ---------- controle de etapas ----------
+
+async function carregarEstado() {
+  try {
+    const res = await fetch("/api/estado");
+    estadoAtual = await res.json();
+    renderEstado();
+  } catch (e) {}
+}
+
+function renderEstado() {
+  const box = document.getElementById("dorAtualBox");
+  clearInterval(tickInt);
+
+  if (estadoAtual.etapa === -1) {
+    box.innerHTML = `<div class="rotulo">Nenhuma votação em andamento</div><div class="texto">—</div>`;
+    return;
+  }
+  if (estadoAtual.etapa === "fim") {
+    box.innerHTML = `<div class="rotulo">Votação encerrada</div><div class="texto">Todas as ${DORES.length} dores foram apresentadas.</div>`;
+    return;
+  }
+
+  const dor = DORES[estadoAtual.etapa];
+  const tick = () => {
+    const decorrido = (Date.now() - estadoAtual.iniciadoEm) / 1000;
+    const restante = Math.max(0, Math.ceil(estadoAtual.duracaoSeg - decorrido));
+    box.innerHTML = `
+      <div class="timer">${formatarTempo(restante)}</div>
+      <div class="rotulo">Dor ${estadoAtual.etapa + 1} de ${DORES.length} · ${dor.area}</div>
+      <div class="texto">${dor.texto}</div>`;
+  };
+  tick();
+  tickInt = setInterval(tick, 500);
+}
+
+function formatarTempo(seg) {
+  const m = Math.floor(seg / 60), s = seg % 60;
+  return m + ":" + String(s).padStart(2, "0");
+}
+
+async function enviarEstado(etapa) {
+  const duracaoSeg = Number(document.getElementById("duracaoInput").value) || DURACAO_PADRAO_SEG;
+  await fetch("/api/estado", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ etapa, duracaoSeg }),
+  });
+  carregarEstado();
+}
+
+function iniciar() { enviarEstado(0); }
+function proxima() {
+  const prox = estadoAtual.etapa === -1 ? 0 : estadoAtual.etapa + 1;
+  enviarEstado(prox >= DORES.length ? "fim" : prox);
+}
+function encerrar() {
+  if (confirm("Encerrar a votação agora? Os participantes verão a tela de agradecimento.")) enviarEstado("fim");
+}
+function reiniciarEtapas() {
+  if (confirm("Isso volta o modo guiado para 'não iniciado' (os votos já registrados não são apagados). Confirmar?")) enviarEstado(-1);
+}
+async function estender() {
+  // soma 30s ao tempo restante da etapa atual, sem trocar de dor
+  if (estadoAtual.etapa === -1 || estadoAtual.etapa === "fim") return;
+  const decorridoSeg = (Date.now() - estadoAtual.iniciadoEm) / 1000;
+  const restanteSeg = Math.max(0, estadoAtual.duracaoSeg - decorridoSeg);
+  const novaDuracao = restanteSeg + 30;
+  // O endpoint sempre grava iniciadoEm = agora, então para "somar 30s ao que
+  // falta" mandamos uma nova duração que já parte do tempo restante + 30,
+  // contando a partir deste instante.
+  await fetch("/api/estado", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ etapa: estadoAtual.etapa, duracaoSeg: novaDuracao }),
+  });
+  carregarEstado();
+}
+
+// ---------- resultados ----------
+
+function moda(valores) {
+  const contagem = {};
+  valores.forEach(v => contagem[v] = (contagem[v] || 0) + 1);
+  let max = 0;
+  Object.values(contagem).forEach(c => { if (c > max) max = c; });
+  const modas = Object.keys(contagem).filter(k => contagem[k] === max).map(Number).sort((a,b)=>a-b);
+  return { valor: modas[0], empate: modas.length > 1, distribuicao: contagem };
+}
+
+const AREA_COLOR = {
+  PJ: ["--pj", "rgba(185,106,68,.12)"],
+  PF: ["--pf", "rgba(46,132,132,.12)"],
+  EF: ["--ef", "rgba(74,90,140,.12)"],
+};
+function corArea(area) {
+  const chave = Object.keys(AREA_COLOR).find(k => area.startsWith(k));
+  if (chave) return { cor: `var(${AREA_COLOR[chave][0]})`, bg: AREA_COLOR[chave][1], token: chave };
+  return { cor: "var(--cross)", bg: "rgba(124,82,149,.12)", token: "cross" };
+}
+
+let ultimasLinhas = [];
+
+async function carregar() {
+  try {
+    const res = await fetch("/api/results");
+    const data = await res.json();
+    const votos = data.votos || [];
+    renderTabela(votos);
+    renderHeatmap();
+    document.getElementById("status").textContent =
+      votos.length + " pessoa(s) já enviaram alguma resposta — atualizado " + new Date().toLocaleTimeString("pt-BR");
+  } catch (e) {
+    document.getElementById("status").textContent = "Erro ao carregar. Tentando de novo...";
+  }
+}
+
+function calcularLinhas(votos) {
+  return DORES.map(dor => {
+    const porCriterio = {};
+    CRITERIOS.forEach(c => { porCriterio[c.id] = []; });
+    votos.forEach(v => {
+      const r = v.respostas && v.respostas[dor.id];
+      if (!r) return;
+      CRITERIOS.forEach(c => { if (r[c.id]) porCriterio[c.id].push(r[c.id]); });
+    });
+    const modas = {};
+    CRITERIOS.forEach(c => { modas[c.id] = moda(porCriterio[c.id]); });
+    const nVotos = Math.max(...CRITERIOS.map(c => porCriterio[c.id].length), 0);
+    let score = null;
+    if (nVotos > 0) {
+      score = (modas.c1.valor * 3) + (modas.c2.valor * 2) + (modas.c3.valor * 1);
+      if (dor.transversal) score = +(score * 1.3).toFixed(1);
+    }
+    return { dor, modas, nVotos, score };
+  });
+}
+
+function renderTabela(votos) {
+  const linhas = calcularLinhas(votos);
+  ultimasLinhas = linhas;
+  linhas.sort((a, b) => (b.score || 0) - (a.score || 0));
+
+  const tbody = document.getElementById("tbody");
+  tbody.innerHTML = linhas.map(l => {
+    const { cor, bg } = corArea(l.dor.area);
+    const cel = (m) => {
+      if (!m || Object.keys(m.distribuicao).length === 0) return `<td class="criterio-cell">—</td>`;
+      const distTxt = [1,2,3,4].map(v => `${v}:${m.distribuicao[v]||0}`).join(" · ");
+      return `<td class="criterio-cell">
+        <div class="moda ${m.empate ? 'empate':''}">${m.valor}${m.empate ? ' *':''}</div>
+        <div class="dist">${distTxt}</div>
+      </td>`;
+    };
+    return `<tr>
+      <td class="dor-texto">
+        <span class="area-tag" style="--areacolor:${cor};--areabg:${bg}">${l.dor.area}</span>
+        ${l.dor.transversal ? '<span class="transversal-badge">×1,3</span>' : ''}
+        <div>${l.dor.texto}</div>
+      </td>
+      ${cel(l.modas.c1)}
+      ${cel(l.modas.c2)}
+      ${cel(l.modas.c3)}
+      <td class="criterio-cell"><span class="score ${l.score >= 20 ? 'alto':''}">${l.score !== null ? l.score : '—'}</span></td>
+      <td class="votos-count">${l.nVotos}</td>
+    </tr>`;
+  }).join("");
+}
+
+// Cores fixas (tema claro) para o mapa de calor — usadas em vez de var(--x)
+// de propósito: quando a imagem é exportada como PNG, ela precisa ficar
+// correta em qualquer lugar (Miro, Word, PDF do cliente), sem depender do
+// modo claro/escuro do navegador de quem está vendo.
+const HEAT_COLORS = {
+  bg: "#EAEDF4", line: "#DCE0EA", textMuted: "#5A6178", text: "#1E2438",
+  okBg: "#E1F1E4", ok: "#3E8A4E",
+  goldSoft: "#FCEBB0", gold: "#B8860F",
+  coralSoft: "#F6D6D1", coral: "#B93A2A",
+  surface3: "#DFE3ED",
+  pj: "#B96A44", pf: "#2E8484", ef: "#4A5A8C", cross: "#7C5295",
+};
+
+function renderHeatmap() {
+  const linhas = ultimasLinhas.filter(l => l.nVotos > 0);
+  const W = 640, H = 360, PAD = 30;
+  const scoreMax = 32; // cobre o score-base máximo (24) + folga para o bônus ×1,3
+  const xCorte = 2.5, yCorte = 12; // meio da escala (referência, não oficial)
+  const C = HEAT_COLORS;
+
+  const x = (c3) => PAD + ((c3 - 1) / 3) * (W - 2*PAD);
+  const y = (score) => (H - PAD) - (Math.min(score, scoreMax) / scoreMax) * (H - 2*PAD);
+
+  let svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${W} ${H}" style="width:100%;height:auto;max-width:640px;background:${C.bg};border-radius:12px">`;
+  svg += `<rect width="${W}" height="${H}" fill="${C.bg}"/>`;
+  // quadrantes
+  svg += `<rect x="${x(xCorte)}" y="${PAD}" width="${W-PAD-x(xCorte)}" height="${y(yCorte)-PAD}" fill="${C.okBg}" opacity=".8"/>`;
+  svg += `<rect x="${PAD}" y="${PAD}" width="${x(xCorte)-PAD}" height="${y(yCorte)-PAD}" fill="${C.goldSoft}" opacity=".7"/>`;
+  svg += `<rect x="${x(xCorte)}" y="${y(yCorte)}" width="${W-PAD-x(xCorte)}" height="${H-PAD-y(yCorte)}" fill="${C.coralSoft}" opacity=".6"/>`;
+  svg += `<rect x="${PAD}" y="${y(yCorte)}" width="${x(xCorte)-PAD}" height="${H-PAD-y(yCorte)}" fill="${C.surface3}" opacity=".8"/>`;
+
+  // linhas de corte
+  svg += `<line x1="${x(xCorte)}" y1="${PAD}" x2="${x(xCorte)}" y2="${H-PAD}" stroke="${C.line}" stroke-dasharray="4 4"/>`;
+  svg += `<line x1="${PAD}" y1="${y(yCorte)}" x2="${W-PAD}" y2="${y(yCorte)}" stroke="${C.line}" stroke-dasharray="4 4"/>`;
+
+  // rótulos de quadrante
+  svg += `<text x="${x(xCorte)+8}" y="${PAD+16}" font-size="11" fill="${C.ok}" font-family="Arial,sans-serif">Prioridade máxima</text>`;
+  svg += `<text x="${PAD+4}" y="${PAD+16}" font-size="11" fill="${C.gold}" font-family="Arial,sans-serif">Mapear primeiro</text>`;
+  svg += `<text x="${x(xCorte)+8}" y="${H-PAD-6}" font-size="11" fill="${C.coral}" font-family="Arial,sans-serif">Avaliar (C3 alto, score baixo)</text>`;
+  svg += `<text x="${PAD+4}" y="${H-PAD-6}" font-size="11" fill="${C.textMuted}" font-family="Arial,sans-serif">Desprioritizar</text>`;
+
+  // eixos
+  svg += `<text x="${W/2}" y="${H-6}" font-size="11" text-anchor="middle" fill="${C.textMuted}" font-family="Arial,sans-serif">Potencial de automação (C3) →</text>`;
+  svg += `<text x="12" y="${H/2}" font-size="11" fill="${C.textMuted}" font-family="Arial,sans-serif" transform="rotate(-90 12 ${H/2})">Score total →</text>`;
+
+  // pontos
+  linhas.forEach((l) => {
+    const { token } = corArea(l.dor.area);
+    const cx = x(l.modas.c3.valor), cy = y(l.score);
+    svg += `<circle cx="${cx}" cy="${cy}" r="7" fill="${C[token]}" stroke="${C.bg}" stroke-width="1.5"/>`;
+    svg += `<text x="${cx}" y="${cy-10}" font-size="9" text-anchor="middle" fill="${C.text}" font-family="Courier New,monospace">${l.dor.id.replace('dor-','')}</text>`;
+  });
+
+  svg += `</svg>`;
+  document.getElementById("heatmap").innerHTML = svg;
+}
+
+// ---------- exportação ----------
+
+function exportarPDF() {
+  const total = ultimasLinhas.reduce((max, l) => Math.max(max, l.nVotos), 0);
+  document.getElementById("printMeta").textContent =
+    `Gerado em ${new Date().toLocaleString("pt-BR")} · ${total} participante(s) registrados`;
+  document.title = "Relatorio-Priorizacao-Dores-CGPI-" + new Date().toISOString().slice(0,10);
+  window.print();
+}
+
+function exportarHeatmapPNG() {
+  const svgEl = document.querySelector("#heatmap svg");
+  if (!svgEl) { alert("Ainda não há votos suficientes para gerar o mapa de calor."); return; }
+
+  const svgStr = new XMLSerializer().serializeToString(svgEl);
+  const svgBlob = new Blob([svgStr], { type: "image/svg+xml;charset=utf-8" });
+  const url = URL.createObjectURL(svgBlob);
+
+  const img = new Image();
+  img.onload = () => {
+    const escala = 2; // exporta em 2x para ficar nítido ao colar no Miro/Word
+    const canvas = document.createElement("canvas");
+    canvas.width = img.width * escala;
+    canvas.height = img.height * escala;
+    const ctx = canvas.getContext("2d");
+    ctx.fillStyle = "#EAEDF4";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.scale(escala, escala);
+    ctx.drawImage(img, 0, 0);
+    URL.revokeObjectURL(url);
+
+    canvas.toBlob((blob) => {
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = "mapa-calor-priorizacao-cgpi.png";
+      a.click();
+    }, "image/png");
+  };
+  img.onerror = () => { alert("Não foi possível gerar a imagem. Tente de novo."); URL.revokeObjectURL(url); };
+  img.src = url;
+}
+
+async function resetarVotos() {
+  if (!confirm("Isso apaga TODOS os votos registrados até agora e volta o modo guiado para 'não iniciado'. Use só para limpar testes antes do dia da oficina. Confirmar?")) return;
+  await fetch("/api/reset", { method: "POST" });
+  carregar();
+  carregarEstado();
+}
+</script>
+</body>
+</html>

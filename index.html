@@ -1,0 +1,298 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Votação de Priorização — CGPI</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Public+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#F3F5F9; --surface:#FFFFFF; --surface-2:#EAEDF4; --surface-3:#DFE3ED;
+    --text:#1E2438; --text-muted:#5A6178; --text-faint:#8991A6;
+    --line:#DCE0EA;
+    --navy:#2A3352; --navy-ink:#1B2140;
+    --gold:#B8860F; --gold-fill:#FBC513; --gold-soft:#FCEBB0;
+    --coral:#B93A2A; --coral-fill:#D54B40; --coral-soft:#F6D6D1;
+    --azul-brand:#2C82CC;
+    --pj:#B96A44; --pf:#2E8484; --ef:#4A5A8C; --cross:#7C5295;
+    --shadow: 0 1px 2px rgba(30,36,56,.06), 0 8px 24px -12px rgba(30,36,56,.18);
+    --radius: 14px;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --bg:#12162A; --surface:#191F38; --surface-2:#212843; --surface-3:#2B3350;
+      --text:#E9EBF4; --text-muted:#AEB4CC; --text-faint:#7D84A0;
+      --line:#333B5C;
+      --navy:#AEBBE8; --navy-ink:#EEF1FB;
+      --gold:#FFD84D; --gold-fill:#FFD84D; --gold-soft:#4A3E12;
+      --coral:#FF8577; --coral-fill:#FF6F5C; --coral-soft:#4A2320;
+      --azul-brand:#6FB3EE;
+      --pj:#E0967A; --pf:#6BC0C0; --ef:#A8B4E0; --cross:#B893DE;
+      --shadow: 0 1px 2px rgba(0,0,0,.3), 0 12px 28px -14px rgba(0,0,0,.55);
+    }
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; background:var(--bg); color:var(--text);
+    font-family:'Public Sans', -apple-system, sans-serif;
+    -webkit-font-smoothing:antialiased;
+  }
+  h1, h2 { font-family:'Fraunces', Georgia, serif; }
+  .mono { font-family:'IBM Plex Mono', monospace; }
+
+  .wrap{ max-width:640px; margin:0 auto; padding:24px 16px 80px; }
+  header.top{ text-align:center; padding:8px 0 20px; }
+  header.top .brand{
+    font-family:'IBM Plex Mono', monospace; font-size:.72rem; letter-spacing:.08em;
+    text-transform:uppercase; color:var(--text-faint); margin-bottom:6px;
+  }
+  header.top h1{ font-size:1.3rem; margin:0 0 4px; font-weight:600; }
+  header.top p{ color:var(--text-muted); font-size:.9rem; margin:0; }
+
+  .progress{ height:6px; background:var(--surface-3); border-radius:999px; overflow:hidden; margin:16px 0 24px; }
+  .progress > div{ height:100%; background:var(--coral-fill); transition:width .2s ease; }
+
+  .card{
+    background:var(--surface); border:1px solid var(--line); border-radius:var(--radius);
+    padding:20px; margin-bottom:16px; box-shadow:var(--shadow);
+  }
+  .area{
+    display:inline-flex; align-items:center; gap:6px; font-family:'IBM Plex Mono',monospace;
+    font-size:.68rem; font-weight:600; letter-spacing:.04em; text-transform:uppercase;
+    color:var(--areacolor, var(--coral)); background:var(--areabg, var(--coral-soft));
+    padding:3px 8px; border-radius:999px; margin-bottom:10px;
+  }
+  .card h2{ font-size:1.1rem; line-height:1.4; margin:0 0 18px; font-weight:600; }
+
+  .timer-wrap{ display:flex; justify-content:center; margin-bottom:14px; }
+  .timer{
+    font-family:'IBM Plex Mono', monospace; font-weight:600; font-size:1.4rem;
+    color:var(--coral); background:var(--coral-soft); border-radius:999px;
+    padding:6px 18px; min-width:70px; text-align:center;
+  }
+  .timer.acabando{ color:#fff; background:var(--coral); }
+
+  .criterio{ margin-bottom:18px; }
+  .criterio:last-child{ margin-bottom:0; }
+  .criterio .titulo{ font-weight:600; font-size:.92rem; margin-bottom:2px; }
+  .criterio .pergunta{ color:var(--text-muted); font-size:.85rem; margin-bottom:10px; }
+
+  .escala{ display:grid; grid-template-columns:repeat(4,1fr); gap:8px; }
+  .escala label{ position:relative; }
+  .escala input{ position:absolute; opacity:0; width:100%; height:100%; cursor:pointer; }
+  .escala span{
+    display:flex; flex-direction:column; align-items:center; justify-content:center; gap:4px;
+    border:1.5px solid var(--line); border-radius:10px; padding:10px 4px;
+    font-size:.72rem; text-align:center; line-height:1.2; min-height:56px;
+    color:var(--text-muted); transition:all .12s ease; background:var(--surface);
+  }
+  .escala span b{ font-size:.95rem; color:var(--text); }
+  .escala input:checked + span{ border-color:var(--coral); background:var(--coral-soft); color:var(--coral); }
+  .escala input:checked + span b{ color:var(--coral); }
+  .escala input:disabled + span{ opacity:.45; cursor:not-allowed; }
+
+  input[type="text"]{
+    width:100%; font:inherit; padding:13px 14px; border-radius:10px;
+    border:1.5px solid var(--line); margin-bottom:16px; background:var(--surface); color:var(--text);
+  }
+  button{ font:inherit; cursor:pointer; border:none; border-radius:10px; padding:12px 18px; font-weight:600; }
+  button.primary{ background:var(--coral-fill); color:#fff; width:100%; }
+  button.primary:disabled{ opacity:.4; cursor:not-allowed; }
+
+  .hint{ font-size:.82rem; color:var(--text-muted); margin-top:-8px; margin-bottom:18px; }
+  .screen{ display:none; }
+  .screen.active{ display:block; }
+  .center{ text-align:center; padding:50px 16px; }
+  .center .icon{ font-size:2.4rem; margin-bottom:12px; }
+  .center h2{ margin:0 0 8px; }
+  .center p{ color:var(--text-muted); margin:0; }
+  .pulse{ animation:pulse 1.6s ease-in-out infinite; }
+  @keyframes pulse{ 0%,100%{opacity:1;} 50%{opacity:.4;} }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div class="brand">CGPI · Sefaz-SP</div>
+    <h1>Votação de Priorização de Dores</h1>
+    <p>Avalie cada dor nos 3 critérios, quando ela aparecer na tela</p>
+  </header>
+
+  <div class="progress"><div id="progressBar" style="width:0%"></div></div>
+
+  <!-- TELA 0: nome -->
+  <div class="screen active" id="screen-nome">
+    <div class="card">
+      <h2>Antes de começar, como podemos te identificar?</h2>
+      <input type="text" id="inputNome" placeholder="Seu nome" autocomplete="off" />
+      <div class="hint">Usamos só para saber quem já votou. Não aparece junto das respostas na discussão.</div>
+      <button class="primary" onclick="entrar()">Entrar</button>
+    </div>
+  </div>
+
+  <!-- TELA 1: aguardando início -->
+  <div class="screen" id="screen-aguardando">
+    <div class="center pulse">
+      <div class="icon">⏳</div>
+      <h2>Tudo pronto</h2>
+      <p>Aguarde o facilitador iniciar a votação da primeira dor.</p>
+    </div>
+  </div>
+
+  <!-- TELA 2: dor atual (renderizada via JS) -->
+  <div class="screen" id="screen-dor"></div>
+
+  <!-- TELA 3: fim -->
+  <div class="screen" id="screen-fim">
+    <div class="center">
+      <div class="icon">✅</div>
+      <h2>Votação encerrada</h2>
+      <p>Obrigado por participar — pode voltar para o grupo.</p>
+    </div>
+  </div>
+</div>
+
+<script src="dores.js"></script>
+<script>
+let nomeAtual = "";
+let etapaRenderizada = null;
+let poll = null;
+let countdownInt = null;
+const respostasLocais = {}; // cache local só para refletir seleção já feita nesta sessão
+
+function entrar() {
+  const nome = document.getElementById("inputNome").value.trim();
+  if (!nome) { alert("Digite seu nome para continuar."); return; }
+  nomeAtual = nome;
+  trocarTela("screen-aguardando");
+  iniciarPolling();
+}
+
+function trocarTela(id) {
+  document.querySelectorAll(".screen").forEach(s => s.classList.remove("active"));
+  document.getElementById(id).classList.add("active");
+  window.scrollTo(0, 0);
+}
+
+function iniciarPolling() {
+  checarEstado();
+  poll = setInterval(checarEstado, 1500);
+}
+
+async function checarEstado() {
+  try {
+    const res = await fetch("/api/estado");
+    const estado = await res.json();
+    aplicarEstado(estado);
+  } catch (e) { /* silencioso — tenta de novo no próximo tick */ }
+}
+
+function aplicarEstado(estado) {
+  if (estado.etapa === -1) {
+    trocarTela("screen-aguardando");
+    return;
+  }
+  if (estado.etapa === "fim") {
+    clearInterval(poll); clearInterval(countdownInt);
+    trocarTela("screen-fim");
+    return;
+  }
+
+  if (estado.etapa !== etapaRenderizada) {
+    etapaRenderizada = estado.etapa;
+    renderDorAtual(DORES[estado.etapa]);
+    trocarTela("screen-dor");
+  }
+
+  atualizarCronometro(estado);
+}
+
+function atualizarCronometro(estado) {
+  clearInterval(countdownInt);
+  const tick = () => {
+    const decorrido = (Date.now() - estado.iniciadoEm) / 1000;
+    const restante = Math.max(0, Math.ceil(estado.duracaoSeg - decorrido));
+    const el = document.getElementById("timerAtual");
+    if (!el) return;
+    el.textContent = formatarTempo(restante);
+    el.classList.toggle("acabando", restante <= 15);
+    document.querySelectorAll("#screen-dor input[type=radio]").forEach(i => i.disabled = restante <= 0);
+    if (restante <= 0) clearInterval(countdownInt);
+  };
+  tick();
+  countdownInt = setInterval(tick, 300);
+}
+
+function formatarTempo(seg) {
+  const m = Math.floor(seg / 60), s = seg % 60;
+  return m + ":" + String(s).padStart(2, "0");
+}
+
+const AREA_COLOR = {
+  PJ: ["--pj", "rgba(185,106,68,.12)"],
+  PF: ["--pf", "rgba(46,132,132,.12)"],
+  EF: ["--ef", "rgba(74,90,140,.12)"],
+};
+function corArea(area) {
+  const chave = Object.keys(AREA_COLOR).find(k => area.startsWith(k));
+  if (chave) return { cor: `var(${AREA_COLOR[chave][0]})`, bg: AREA_COLOR[chave][1] };
+  return { cor: "var(--cross)", bg: "rgba(124,82,149,.12)" };
+}
+
+function renderDorAtual(dor) {
+  const container = document.getElementById("screen-dor");
+  const jaRespondido = respostasLocais[dor.id] || {};
+  const { cor, bg } = corArea(dor.area);
+
+  let html = `<div class="timer-wrap"><div class="timer" id="timerAtual">--:--</div></div>`;
+  html += `<div class="card">
+    <span class="area" style="--areacolor:${cor};--areabg:${bg}">${dor.area}</span>
+    <h2>${dor.texto}</h2>`;
+
+  CRITERIOS.forEach(crit => {
+    html += `<div class="criterio">
+      <div class="titulo">${crit.titulo}</div>
+      <div class="pergunta">${crit.pergunta}</div>
+      <div class="escala">`;
+    crit.escala.forEach((label, i) => {
+      const valor = i + 1;
+      const checked = jaRespondido[crit.id] === valor ? "checked" : "";
+      html += `<label>
+        <input type="radio" name="${dor.id}__${crit.id}" value="${valor}" ${checked}
+          onchange="responder('${dor.id}','${crit.id}',${valor})" />
+        <span><b>${valor}</b>${label}</span>
+      </label>`;
+    });
+    html += `</div></div>`;
+  });
+  html += `</div>`;
+  html += `<p style="text-align:center;color:var(--text-muted);font-size:.82rem">Sua resposta é salva assim que você clica — não precisa apertar nada para confirmar.</p>`;
+
+  container.innerHTML = html;
+}
+
+async function responder(doreId, critId, valor) {
+  if (!respostasLocais[doreId]) respostasLocais[doreId] = {};
+  respostasLocais[doreId][critId] = valor;
+  atualizarProgresso();
+
+  try {
+    await fetch("/api/vote", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ nome: nomeAtual, doreId, criterioId: critId, valor }),
+    });
+  } catch (e) { /* mantém a marcação local mesmo se a rede falhar num clique isolado */ }
+}
+
+function atualizarProgresso() {
+  const total = DORES.length * CRITERIOS.length;
+  let feito = 0;
+  Object.values(respostasLocais).forEach(r => { feito += Object.keys(r).length; });
+  const pct = total ? Math.round((feito / total) * 100) : 0;
+  document.getElementById("progressBar").style.width = pct + "%";
+}
+</script>
+</body>
+</html>
