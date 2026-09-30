@@ -133,8 +133,17 @@
   <!-- CONTROLE DO MODO GUIADO -->
   <div class="panel no-print">
     <h3>Controle da votação (modo guiado)</h3>
+    <p style="color:var(--text-muted);font-size:.82rem;margin-top:-6px">
+      Duas rodadas possíveis: <b>Triagem</b> (voto rápido sim/não em TODAS as dores do banco, pra eliminar as que não valem a rodada completa) e <b>Priorização completa</b> (3 critérios, só nas dores marcadas como "Ativa" em "Gerenciar dores"). Use a triagem primeiro quando o banco tiver muitas dores — o resultado dela aparece no painel logo abaixo, para você decidir o corte antes de rodar a completa.
+    </p>
     <div class="controle-topo">
-      <label>Duração por dor (seg): <input type="number" id="duracaoInput" value="120" min="15" step="15" /></label>
+      <label>Rodada:
+        <select id="modoSelect" onchange="mudarModo()" style="padding:6px 8px;border-radius:8px;border:1.5px solid var(--line);font:inherit;background:var(--surface);color:var(--text)">
+          <option value="triagem">Triagem (eliminar dores — sim/não)</option>
+          <option value="completa" selected>Priorização completa (3 critérios)</option>
+        </select>
+      </label>
+      <label>Duração por dor (seg): <input type="number" id="duracaoInput" value="120" min="10" step="5" /></label>
       <button class="ghost" onclick="carregar()">Atualizar painel agora</button>
     </div>
 
@@ -151,6 +160,24 @@
       <button class="ghost" onclick="reiniciarEtapas()">↺ Reiniciar etapas</button>
       <button class="danger" onclick="resetarVotos()">🗑 Zerar TODOS os votos (só antes do dia real)</button>
     </div>
+  </div>
+
+  <!-- RESULTADOS DA TRIAGEM -->
+  <div class="panel no-print">
+    <h3>Resultados da triagem</h3>
+    <p style="color:var(--text-muted);font-size:.82rem;margin-top:-6px">
+      % de "sim" (mantém) por dor, ordenado da pior para a melhor. Use isso para decidir o corte — depois ajuste as caixinhas "Ativa" em "Gerenciar dores" (ou use o atalho abaixo) e clique em "💾 Salvar alterações" lá embaixo para valer na rodada completa.
+    </p>
+    <div class="controle-topo" style="margin-top:6px">
+      <label>Manter as top <input type="number" id="topNInput" value="15" min="1" style="width:60px" /> dores</label>
+      <button class="ghost" onclick="aplicarCorteTriagem()">Aplicar corte à seleção (não salva sozinho)</button>
+    </div>
+    <table>
+      <thead>
+        <tr><th>Dor</th><th class="criterio-cell">% Sim</th><th>Votos</th></tr>
+      </thead>
+      <tbody id="triagemBody"><tr><td colspan="3" style="color:var(--text-muted)">Ainda sem votos de triagem.</td></tr></tbody>
+    </table>
   </div>
 
   <!-- GERENCIAR DORES (banco editável) -->
@@ -232,10 +259,16 @@
 
 <script src="dores.js"></script>
 <script>
-let estadoAtual = { etapa: -1, duracaoSeg: 120, iniciadoEm: null };
+let estadoAtual = { etapa: -1, duracaoSeg: 120, iniciadoEm: null, modo: "completa" };
 let tickInt = null;
 let CATALOGO = []; // todas as dores cadastradas (banco), inclusive as desmarcadas
-let DORES = [];    // só as marcadas como "selecionada" — usadas no modo guiado e nos resultados
+let DORES = [];    // só as marcadas como "selecionada" — usadas na rodada completa e nos resultados
+
+// lista de dores da etapa ATUAL do modo guiado (triagem usa o banco inteiro,
+// completa usa só as "selecionada")
+function listaAtiva(modo) {
+  return modo === "triagem" ? CATALOGO : DORES;
+}
 
 document.getElementById("logoCgpi").src = LOGO_CGPI;
 
@@ -368,27 +401,41 @@ async function carregarEstado() {
 function renderEstado() {
   const box = document.getElementById("dorAtualBox");
   clearInterval(tickInt);
+  const lista = listaAtiva(estadoAtual.modo);
+  const rotuloModo = estadoAtual.modo === "triagem" ? "Triagem" : "Priorização completa";
 
   if (estadoAtual.etapa === -1) {
     box.innerHTML = `<div class="rotulo">Nenhuma votação em andamento</div><div class="texto">—</div>`;
     return;
   }
   if (estadoAtual.etapa === "fim") {
-    box.innerHTML = `<div class="rotulo">Votação encerrada</div><div class="texto">Todas as ${DORES.length} dores foram apresentadas.</div>`;
+    box.innerHTML = `<div class="rotulo">${rotuloModo} encerrada</div><div class="texto">Todas as ${lista.length} dores foram apresentadas.</div>`;
     return;
   }
 
-  const dor = DORES[estadoAtual.etapa];
+  const dor = lista[estadoAtual.etapa];
+  if (!dor) {
+    box.innerHTML = `<div class="rotulo">${rotuloModo}</div><div class="texto">Etapa inválida (a lista de dores pode ter mudado). Reinicie as etapas.</div>`;
+    return;
+  }
   const tick = () => {
     const decorrido = (Date.now() - estadoAtual.iniciadoEm) / 1000;
     const restante = Math.max(0, Math.ceil(estadoAtual.duracaoSeg - decorrido));
     box.innerHTML = `
       <div class="timer">${formatarTempo(restante)}</div>
-      <div class="rotulo">Dor ${estadoAtual.etapa + 1} de ${DORES.length} · ${dor.area}</div>
+      <div class="rotulo">${rotuloModo} · dor ${estadoAtual.etapa + 1} de ${lista.length} · ${dor.area}</div>
       <div class="texto">${dor.texto}</div>`;
   };
   tick();
   tickInt = setInterval(tick, 500);
+}
+
+// Chamado ao trocar o seletor "Rodada" — só ajusta a duração sugerida no
+// campo, não envia nada ao servidor até clicar em Iniciar/Próxima.
+function mudarModo() {
+  const modo = document.getElementById("modoSelect").value;
+  document.getElementById("duracaoInput").value =
+    modo === "triagem" ? DURACAO_TRIAGEM_PADRAO_SEG : DURACAO_PADRAO_SEG;
 }
 
 function formatarTempo(seg) {
@@ -396,26 +443,37 @@ function formatarTempo(seg) {
   return m + ":" + String(s).padStart(2, "0");
 }
 
-async function enviarEstado(etapa) {
-  const duracaoSeg = Number(document.getElementById("duracaoInput").value) || DURACAO_PADRAO_SEG;
+async function enviarEstado(etapa, modoForcado) {
+  const modo = modoForcado || document.getElementById("modoSelect").value;
+  const duracaoSeg = Number(document.getElementById("duracaoInput").value) ||
+    (modo === "triagem" ? DURACAO_TRIAGEM_PADRAO_SEG : DURACAO_PADRAO_SEG);
   await fetch("/api/estado", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ etapa, duracaoSeg }),
+    body: JSON.stringify({ etapa, duracaoSeg, modo }),
   });
   carregarEstado();
 }
 
-function iniciar() { enviarEstado(0); }
+function iniciar() {
+  const modo = document.getElementById("modoSelect").value;
+  enviarEstado(0, modo);
+}
 function proxima() {
-  const prox = estadoAtual.etapa === -1 ? 0 : estadoAtual.etapa + 1;
-  enviarEstado(prox >= DORES.length ? "fim" : prox);
+  const modo = document.getElementById("modoSelect").value;
+  // Se a rodada em andamento é de outro modo (ex.: estava em "fim" da
+  // triagem e o facilitador troca o seletor para "completa"), começa do 0
+  // nesse novo modo em vez de continuar a contagem antiga.
+  const mesmoModo = estadoAtual.modo === modo;
+  const prox = (!mesmoModo || estadoAtual.etapa === -1) ? 0 : estadoAtual.etapa + 1;
+  const lista = listaAtiva(modo);
+  enviarEstado(prox >= lista.length ? "fim" : prox, modo);
 }
 function encerrar() {
-  if (confirm("Encerrar a votação agora? Os participantes verão a tela de agradecimento.")) enviarEstado("fim");
+  if (confirm("Encerrar a votação agora? Os participantes verão a tela de agradecimento.")) enviarEstado("fim", estadoAtual.modo);
 }
 function reiniciarEtapas() {
-  if (confirm("Isso volta o modo guiado para 'não iniciado' (os votos já registrados não são apagados). Confirmar?")) enviarEstado(-1);
+  if (confirm("Isso volta o modo guiado para 'não iniciado' (os votos já registrados não são apagados). Confirmar?")) enviarEstado(-1, document.getElementById("modoSelect").value);
 }
 async function estender() {
   // soma 30s ao tempo restante da etapa atual, sem trocar de dor
@@ -429,7 +487,7 @@ async function estender() {
   await fetch("/api/estado", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ etapa: estadoAtual.etapa, duracaoSeg: novaDuracao }),
+    body: JSON.stringify({ etapa: estadoAtual.etapa, duracaoSeg: novaDuracao, modo: estadoAtual.modo }),
   });
   carregarEstado();
 }
@@ -458,18 +516,83 @@ function corArea(area) {
 
 let ultimasLinhas = [];
 
+let ultimosVotos = [];
+
 async function carregar() {
   try {
     const res = await fetch("/api/results");
     const data = await res.json();
     const votos = data.votos || [];
+    ultimosVotos = votos;
     renderTabela(votos);
     renderHeatmap();
+    renderTriagem(votos);
     document.getElementById("status").textContent =
       votos.length + " pessoa(s) já enviaram alguma resposta — atualizado " + new Date().toLocaleTimeString("pt-BR");
   } catch (e) {
     document.getElementById("status").textContent = "Erro ao carregar. Tentando de novo...";
   }
+}
+
+// ---------- triagem (eliminação rápida) ----------
+
+function calcularTriagem(votos) {
+  return CATALOGO.map(dor => {
+    let sim = 0, nao = 0;
+    votos.forEach(v => {
+      const r = v.respostas && v.respostas[dor.id];
+      const valor = r && r[CRITERIO_TRIAGEM.id];
+      if (valor === 2) sim++;
+      else if (valor === 1) nao++;
+    });
+    const total = sim + nao;
+    const pctSim = total ? Math.round((sim / total) * 100) : null;
+    return { dor, sim, nao, total, pctSim };
+  });
+}
+
+function renderTriagem(votos) {
+  const linhas = calcularTriagem(votos).filter(l => l.total > 0);
+  const tbody = document.getElementById("triagemBody");
+  if (linhas.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="3" style="color:var(--text-muted)">Ainda sem votos de triagem.</td></tr>`;
+    return;
+  }
+  linhas.sort((a, b) => a.pctSim - b.pctSim);
+  tbody.innerHTML = linhas.map(l => {
+    const { cor, bg } = corArea(l.dor.area);
+    const corPct = l.pctSim >= 60 ? "var(--ok)" : l.pctSim <= 30 ? "var(--coral)" : "var(--gold)";
+    return `<tr>
+      <td class="dor-texto">
+        <span class="area-tag" style="--areacolor:${cor};--areabg:${bg}">${l.dor.area}</span>
+        <div>${l.dor.texto}</div>
+      </td>
+      <td class="criterio-cell"><span class="score" style="color:${corPct}">${l.pctSim}%</span></td>
+      <td class="votos-count">${l.total}</td>
+    </tr>`;
+  }).join("");
+}
+
+// Atalho: marca "selecionada" para as N dores com maior % de "sim" na
+// triagem (as demais ficam desmarcadas) e re-renderiza "Gerenciar dores" —
+// não salva sozinho, o facilitador confere e clica em "💾 Salvar alterações".
+function aplicarCorteTriagem() {
+  const n = Math.max(1, Number(document.getElementById("topNInput").value) || 15);
+  const linhas = calcularTriagem(ultimosVotos).filter(l => l.total > 0);
+  if (linhas.length === 0) { alert("Ainda não há votos de triagem para basear o corte."); return; }
+  linhas.sort((a, b) => b.pctSim - a.pctSim);
+  const mantidos = new Set(linhas.slice(0, n).map(l => l.dor.id));
+  CATALOGO.forEach(d => {
+    // só mexe em quem participou da triagem — dores sem voto nenhum
+    // ficam como estavam, para não desmarcar algo por falta de dado
+    if (mantidos.size && linhas.some(l => l.dor.id === d.id)) {
+      d.selecionada = mantidos.has(d.id);
+    }
+  });
+  DORES = CATALOGO.filter(d => d.selecionada !== false);
+  renderCatalogo();
+  document.getElementById("catalogoStatus").textContent += " · corte da triagem aplicado (top " + n + ") — confira e clique em Salvar";
+  document.getElementById("catalogoBody").scrollIntoView({ behavior: "smooth", block: "start" });
 }
 
 function calcularLinhas(votos) {
