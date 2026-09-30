@@ -134,16 +134,16 @@
   <div class="panel no-print">
     <h3>Controle da votação (modo guiado)</h3>
     <p style="color:var(--text-muted);font-size:.82rem;margin-top:-6px">
-      Duas rodadas possíveis: <b>Triagem</b> (voto rápido sim/não em TODAS as dores do banco, pra eliminar as que não valem a rodada completa) e <b>Priorização completa</b> (3 critérios, só nas dores marcadas como "Ativa" em "Gerenciar dores"). Use a triagem primeiro quando o banco tiver muitas dores — o resultado dela aparece no painel logo abaixo, para você decidir o corte antes de rodar a completa.
+      Duas rodadas possíveis: <b>Triagem</b> (dot voting — todo mundo vê as dores juntas e marca até 9, para eliminar as que não valem a rodada completa) e <b>Priorização completa</b> (3 critérios, uma dor por vez, só nas dores marcadas como "Ativa" em "Gerenciar dores"). Use a triagem primeiro — o resultado dela aparece no painel logo abaixo, para você decidir o corte antes de rodar a completa.
     </p>
     <div class="controle-topo">
       <label>Rodada:
         <select id="modoSelect" onchange="mudarModo()" style="padding:6px 8px;border-radius:8px;border:1.5px solid var(--line);font:inherit;background:var(--surface);color:var(--text)">
-          <option value="triagem">Triagem (eliminar dores — sim/não)</option>
+          <option value="triagem">Triagem (eliminar dores — dot voting)</option>
           <option value="completa" selected>Priorização completa (3 critérios)</option>
         </select>
       </label>
-      <label>Duração por dor (seg): <input type="number" id="duracaoInput" value="120" min="10" step="5" /></label>
+      <label id="duracaoLabel">Duração por dor (seg): <input type="number" id="duracaoInput" value="120" min="10" step="5" /></label>
       <button class="ghost" onclick="carregar()">Atualizar painel agora</button>
     </div>
 
@@ -153,8 +153,8 @@
     </div>
 
     <div class="botoes">
-      <button class="primary" onclick="iniciar()">▶ Iniciar (dor 1)</button>
-      <button class="primary" onclick="proxima()">⏭ Próxima dor</button>
+      <button class="primary" onclick="iniciar()">▶ Iniciar</button>
+      <button class="primary" id="btnProxima" onclick="proxima()">⏭ Próxima dor</button>
       <button class="ghost" onclick="estender()">+30s</button>
       <button class="danger" onclick="encerrar()">■ Encerrar votação</button>
       <button class="ghost" onclick="reiniciarEtapas()">↺ Reiniciar etapas</button>
@@ -166,15 +166,15 @@
   <div class="panel no-print">
     <h3>Resultados da triagem</h3>
     <p style="color:var(--text-muted);font-size:.82rem;margin-top:-6px">
-      % de "sim" (mantém) por dor, ordenado da pior para a melhor. Use isso para decidir o corte — depois ajuste as caixinhas "Ativa" em "Gerenciar dores" (ou use o atalho abaixo) e clique em "💾 Salvar alterações" lá embaixo para valer na rodada completa.
+      Número de marcações por dor (cada pessoa marcou até 9), ordenado da mais marcada para a menos marcada. Use isso para decidir o corte — depois ajuste as caixinhas "Ativa" em "Gerenciar dores" (ou use o atalho abaixo) e clique em "💾 Salvar alterações" lá embaixo para valer na rodada completa.
     </p>
     <div class="controle-topo" style="margin-top:6px">
-      <label>Manter as top <input type="number" id="topNInput" value="15" min="1" style="width:60px" /> dores</label>
+      <label>Manter as top <input type="number" id="topNInput" value="12" min="1" style="width:60px" /> dores</label>
       <button class="ghost" onclick="aplicarCorteTriagem()">Aplicar corte à seleção (não salva sozinho)</button>
     </div>
     <table>
       <thead>
-        <tr><th>Dor</th><th class="criterio-cell">% Sim</th><th>Votos</th></tr>
+        <tr><th>Dor</th><th class="criterio-cell">Marcações</th><th>% do grupo</th></tr>
       </thead>
       <tbody id="triagemBody"><tr><td colspan="3" style="color:var(--text-muted)">Ainda sem votos de triagem.</td></tr></tbody>
     </table>
@@ -278,6 +278,7 @@ function checarPin() {
     document.getElementById("lock").classList.add("hidden");
     document.getElementById("painel").classList.remove("hidden");
     document.getElementById("duracaoInput").value = DURACAO_PADRAO_SEG;
+    atualizarControlesModo();
     carregarCatalogo();
     carregar();
     carregarEstado();
@@ -286,6 +287,24 @@ function checarPin() {
   } else {
     alert("PIN incorreto.");
   }
+}
+
+// Chamado ao trocar o seletor "Rodada" — ajusta a duração sugerida e
+// mostra/esconde controles que só fazem sentido num dos dois modos (a
+// triagem é uma tela única, não tem "próxima dor").
+function mudarModo() {
+  const modo = document.getElementById("modoSelect").value;
+  document.getElementById("duracaoInput").value =
+    modo === "triagem" ? DURACAO_TRIAGEM_PADRAO_SEG : DURACAO_PADRAO_SEG;
+  atualizarControlesModo();
+}
+
+function atualizarControlesModo() {
+  const modo = document.getElementById("modoSelect").value;
+  const ehTriagem = modo === "triagem";
+  document.getElementById("btnProxima").style.display = ehTriagem ? "none" : "";
+  document.getElementById("duracaoLabel").firstChild.textContent =
+    ehTriagem ? "Duração da rodada (seg): " : "Duração por dor (seg): ";
 }
 
 // ---------- banco de dores (catálogo editável) ----------
@@ -401,19 +420,33 @@ async function carregarEstado() {
 function renderEstado() {
   const box = document.getElementById("dorAtualBox");
   clearInterval(tickInt);
-  const lista = listaAtiva(estadoAtual.modo);
-  const rotuloModo = estadoAtual.modo === "triagem" ? "Triagem" : "Priorização completa";
+  const rotuloModo = estadoAtual.modo === "triagem" ? "Triagem (dot voting)" : "Priorização completa";
 
   if (estadoAtual.etapa === -1) {
     box.innerHTML = `<div class="rotulo">Nenhuma votação em andamento</div><div class="texto">—</div>`;
     return;
   }
   if (estadoAtual.etapa === "fim") {
-    box.innerHTML = `<div class="rotulo">${rotuloModo} encerrada</div><div class="texto">Todas as ${lista.length} dores foram apresentadas.</div>`;
+    box.innerHTML = `<div class="rotulo">${rotuloModo} encerrada</div><div class="texto">Confira os resultados abaixo.</div>`;
     return;
   }
 
-  const dor = lista[estadoAtual.etapa];
+  // Triagem é uma tela única (todas as dores juntas) — não tem "dor atual".
+  if (estadoAtual.modo === "triagem") {
+    const tick = () => {
+      const decorrido = (Date.now() - estadoAtual.iniciadoEm) / 1000;
+      const restante = Math.max(0, Math.ceil(estadoAtual.duracaoSeg - decorrido));
+      box.innerHTML = `
+        <div class="timer">${formatarTempo(restante)}</div>
+        <div class="rotulo">${rotuloModo} em andamento</div>
+        <div class="texto">Todo mundo está marcando até ${ORCAMENTO_VOTOS_TRIAGEM} dores na própria tela — acompanhe os resultados no painel "Resultados da triagem" abaixo.</div>`;
+    };
+    tick();
+    tickInt = setInterval(tick, 500);
+    return;
+  }
+
+  const dor = DORES[estadoAtual.etapa];
   if (!dor) {
     box.innerHTML = `<div class="rotulo">${rotuloModo}</div><div class="texto">Etapa inválida (a lista de dores pode ter mudado). Reinicie as etapas.</div>`;
     return;
@@ -423,19 +456,11 @@ function renderEstado() {
     const restante = Math.max(0, Math.ceil(estadoAtual.duracaoSeg - decorrido));
     box.innerHTML = `
       <div class="timer">${formatarTempo(restante)}</div>
-      <div class="rotulo">${rotuloModo} · dor ${estadoAtual.etapa + 1} de ${lista.length} · ${dor.area}</div>
+      <div class="rotulo">${rotuloModo} · dor ${estadoAtual.etapa + 1} de ${DORES.length} · ${dor.area}</div>
       <div class="texto">${dor.texto}</div>`;
   };
   tick();
   tickInt = setInterval(tick, 500);
-}
-
-// Chamado ao trocar o seletor "Rodada" — só ajusta a duração sugerida no
-// campo, não envia nada ao servidor até clicar em Iniciar/Próxima.
-function mudarModo() {
-  const modo = document.getElementById("modoSelect").value;
-  document.getElementById("duracaoInput").value =
-    modo === "triagem" ? DURACAO_TRIAGEM_PADRAO_SEG : DURACAO_PADRAO_SEG;
 }
 
 function formatarTempo(seg) {
@@ -536,56 +561,69 @@ async function carregar() {
 
 // ---------- triagem (eliminação rápida) ----------
 
+// Conta quantas pessoas participaram da triagem (quem tem pelo menos uma
+// marcação — incluindo desmarcações, valor 0 — em qualquer dor) e quantas
+// marcações (valor 1) cada dor recebeu.
 function calcularTriagem(votos) {
-  return CATALOGO.map(dor => {
-    let sim = 0, nao = 0;
+  const participantes = new Set();
+  votos.forEach(v => {
+    const respostas = v.respostas || {};
+    Object.values(respostas).forEach(r => {
+      if (r && r[TRIAGEM_CRITERIO_ID] !== undefined) participantes.add(v.nome);
+    });
+  });
+  const totalParticipantes = participantes.size;
+
+  const linhas = CATALOGO.map(dor => {
+    let marcacoes = 0;
     votos.forEach(v => {
       const r = v.respostas && v.respostas[dor.id];
-      const valor = r && r[CRITERIO_TRIAGEM.id];
-      if (valor === 2) sim++;
-      else if (valor === 1) nao++;
+      if (r && r[TRIAGEM_CRITERIO_ID] === 1) marcacoes++;
     });
-    const total = sim + nao;
-    const pctSim = total ? Math.round((sim / total) * 100) : null;
-    return { dor, sim, nao, total, pctSim };
+    return { dor, marcacoes };
   });
+  return { linhas, totalParticipantes };
 }
 
 function renderTriagem(votos) {
-  const linhas = calcularTriagem(votos).filter(l => l.total > 0);
+  const { linhas, totalParticipantes } = calcularTriagem(votos);
+  const comVoto = linhas.filter(l => l.marcacoes > 0);
   const tbody = document.getElementById("triagemBody");
-  if (linhas.length === 0) {
+  if (comVoto.length === 0) {
     tbody.innerHTML = `<tr><td colspan="3" style="color:var(--text-muted)">Ainda sem votos de triagem.</td></tr>`;
     return;
   }
-  linhas.sort((a, b) => a.pctSim - b.pctSim);
-  tbody.innerHTML = linhas.map(l => {
+  comVoto.sort((a, b) => b.marcacoes - a.marcacoes);
+  tbody.innerHTML = comVoto.map(l => {
     const { cor, bg } = corArea(l.dor.area);
-    const corPct = l.pctSim >= 60 ? "var(--ok)" : l.pctSim <= 30 ? "var(--coral)" : "var(--gold)";
+    const pct = totalParticipantes ? Math.round((l.marcacoes / totalParticipantes) * 100) : 0;
+    const corPct = pct >= 60 ? "var(--ok)" : pct <= 25 ? "var(--coral)" : "var(--gold)";
     return `<tr>
       <td class="dor-texto">
         <span class="area-tag" style="--areacolor:${cor};--areabg:${bg}">${l.dor.area}</span>
         <div>${l.dor.texto}</div>
       </td>
-      <td class="criterio-cell"><span class="score" style="color:${corPct}">${l.pctSim}%</span></td>
-      <td class="votos-count">${l.total}</td>
+      <td class="criterio-cell"><span class="score" style="color:${corPct}">${l.marcacoes}</span></td>
+      <td class="votos-count">${pct}% (de ${totalParticipantes})</td>
     </tr>`;
   }).join("");
 }
 
-// Atalho: marca "selecionada" para as N dores com maior % de "sim" na
+// Atalho: marca "selecionada" para as N dores com mais marcações na
 // triagem (as demais ficam desmarcadas) e re-renderiza "Gerenciar dores" —
 // não salva sozinho, o facilitador confere e clica em "💾 Salvar alterações".
 function aplicarCorteTriagem() {
-  const n = Math.max(1, Number(document.getElementById("topNInput").value) || 15);
-  const linhas = calcularTriagem(ultimosVotos).filter(l => l.total > 0);
-  if (linhas.length === 0) { alert("Ainda não há votos de triagem para basear o corte."); return; }
-  linhas.sort((a, b) => b.pctSim - a.pctSim);
-  const mantidos = new Set(linhas.slice(0, n).map(l => l.dor.id));
+  const n = Math.max(1, Number(document.getElementById("topNInput").value) || 12);
+  const { linhas } = calcularTriagem(ultimosVotos);
+  const comVoto = linhas.filter(l => l.marcacoes > 0);
+  if (comVoto.length === 0) { alert("Ainda não há votos de triagem para basear o corte."); return; }
+  comVoto.sort((a, b) => b.marcacoes - a.marcacoes);
+  const mantidos = new Set(comVoto.slice(0, n).map(l => l.dor.id));
   CATALOGO.forEach(d => {
-    // só mexe em quem participou da triagem — dores sem voto nenhum
-    // ficam como estavam, para não desmarcar algo por falta de dado
-    if (mantidos.size && linhas.some(l => l.dor.id === d.id)) {
+    // só mexe em quem participou da triagem (recebeu ao menos 1 marcação de
+    // alguém) — dores sem nenhuma marcação ficam como estavam, para não
+    // desmarcar algo por falta de dado
+    if (comVoto.some(l => l.dor.id === d.id)) {
       d.selecionada = mantidos.has(d.id);
     }
   });
