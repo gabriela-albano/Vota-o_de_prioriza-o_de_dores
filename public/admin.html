@@ -158,13 +158,13 @@
   <div class="panel no-print">
     <h3>Controle da votação</h3>
     <p class="nota">
-      <b>Rodada 1 · Triagem</b> (dot voting — todas as dores numa tela, cada pessoa marca até 9) → você aplica o corte → <b>Rodada 2 · Priorização</b> (3 critérios, uma dor por vez, só nas dores "Ativas").
+      <b>Roteiro:</b> 1) "Zerar TODOS os votos" antes de começar → 2) participantes entram pelo link → 3) com "Rodada 1 · Triagem" selecionada, "▶ Iniciar rodada" → 4) quando todos terminarem, "■ Encerrar rodada" → 5) em "Resultados da Rodada 1", "Aplicar corte" → 6) mude para "Rodada 2 · Priorização" e "▶ Iniciar rodada"; avance com "⏭ Próxima dor" até o fim.
     </p>
     <div class="controle-topo">
       <label>Rodada:
         <select id="modoSelect" onchange="mudarModo()">
-          <option value="triagem">Rodada 1 · Triagem (dot voting)</option>
-          <option value="completa" selected>Rodada 2 · Priorização (3 critérios)</option>
+          <option value="triagem" selected>Rodada 1 · Triagem (dot voting)</option>
+          <option value="completa">Rodada 2 · Priorização (3 critérios)</option>
         </select>
       </label>
       <label id="duracaoLabel"><span id="duracaoTxt">Duração por dor (seg):</span> <input type="number" id="duracaoInput" value="120" min="10" step="5" /></label>
@@ -270,6 +270,10 @@
       </label>
     </div>
     <h3>Resultados da Rodada 2 · Priorização</h3>
+    <div class="controle-topo no-print" style="margin-top:-4px">
+      <button class="danger" onclick="resetarVotos()">🗑 Zerar TODOS os votos e recomeçar</button>
+      <span id="resetStatus" class="nota" style="margin:0"></span>
+    </div>
     <div class="explica">
       <b>Como o score é calculado.</b> Para cada critério vale a <b>moda</b> — a nota que mais pessoas deram.
       Score base = (moda C1 × 3) + (moda C2 × 2) + (moda C3 × 1) → vai de 6 a 24.
@@ -305,7 +309,7 @@
 
 <script src="dores.js"></script>
 <script>
-let estadoAtual = { etapa: -1, duracaoSeg: 120, iniciadoEm: null, modo: "completa" };
+let estadoAtual = { etapa: -1, duracaoSeg: 180, iniciadoEm: null, modo: "triagem" };
 let tickInt = null;
 let CATALOGO = []; // todas as dores do banco (inclusive desmarcadas)
 let DORES = [];    // só as "Ativas" — Rodada 2, nesta ordem (define o nº de cada dor)
@@ -320,8 +324,7 @@ function checarPin() {
   if (pin === ADMIN_PIN) {
     document.getElementById("lock").classList.add("hidden");
     document.getElementById("painel").classList.remove("hidden");
-    document.getElementById("duracaoInput").value = DURACAO_PADRAO_SEG;
-    atualizarControlesModo();
+    mudarModo(); // começa na Rodada 1 · Triagem, com a duração padrão dela
     carregarCatalogo().then(() => { carregar(); carregarEstado(); });
     setInterval(carregar, 3000);
     setInterval(carregarEstado, 2000);
@@ -934,8 +937,22 @@ function exportarHeatmapPNG() {
 }
 
 async function resetarVotos() {
-  if (!confirm("Isso apaga TODOS os votos registrados até agora e volta todos para 'aguardando'. Use só para limpar testes antes do dia da oficina. Confirmar?")) return;
-  await fetch("/api/reset", { method: "POST" });
+  if (!confirm("Isso apaga TODOS os votos registrados até agora, volta todos para 'aguardando' e abre uma sessão nova (os celulares dos participantes descartam o que tinham). Confirmar?")) return;
+  const st = document.getElementById("resetStatus");
+  st.textContent = "Zerando…";
+  try {
+    const res = await fetch("/api/reset", { method: "POST" });
+    const d = await res.json();
+    if (!res.ok || !d.ok) throw new Error();
+    ultimosVotos = [];
+    document.getElementById("modoSelect").value = "triagem";
+    mudarModo();
+    st.textContent = `Zerado ✅ (${d.removidos} registro(s) apagados) — sessão nova aberta às ${new Date().toLocaleTimeString("pt-BR")}`;
+  } catch (e) {
+    st.textContent = "Erro ao zerar. Tente de novo.";
+    alert("Não consegui zerar os votos. Tente de novo.");
+  }
+  await carregarCatalogo();
   carregar();
   carregarEstado();
 }

@@ -241,13 +241,14 @@ let renderizando = false;
 let tempoEsgotado = false;
 let countdownInt = null;
 let poll = null;
+let sessaoAtual = null;        // nº da sessão de votação (muda quando o facilitador zera os votos)
 
 document.getElementById("logoCgpi").src = LOGO_CGPI;
 
 // ---------- memória local (sobrevive a recarregar a página) ----------
 const LS_KEY = "votacao-cgpi-participante";
 function salvarLocal() {
-  try { localStorage.setItem(LS_KEY, JSON.stringify({ nome: nomeAtual, entrouEm, respostas: respostasLocais })); } catch (e) {}
+  try { localStorage.setItem(LS_KEY, JSON.stringify({ nome: nomeAtual, entrouEm, respostas: respostasLocais, sessao: sessaoAtual })); } catch (e) {}
 }
 function lerLocal() {
   try { return JSON.parse(localStorage.getItem(LS_KEY) || "null"); } catch (e) { return null; }
@@ -276,9 +277,16 @@ async function entrar() {
   if (!nome) { alert("Digite seu nome para continuar."); return; }
   nomeAtual = nome;
 
-  // recupera respostas anteriores (se a pessoa recarregou a página)
+  // descobre a sessão atual (se o facilitador zerou os votos, o que estava
+  // guardado neste celular é de uma sessão antiga e NÃO pode ser reenviado)
+  try {
+    const e = await (await fetch("/api/estado", { cache: "no-store" })).json();
+    sessaoAtual = Number(e.sessao) || 1;
+  } catch (err) { sessaoAtual = sessaoAtual || 1; }
+
+  // recupera respostas anteriores (se a pessoa recarregou a página) — só da mesma sessão
   const local = lerLocal();
-  if (local && normalizarNome(local.nome) === normalizarNome(nome)) {
+  if (local && normalizarNome(local.nome) === normalizarNome(nome) && Number(local.sessao) === sessaoAtual) {
     respostasLocais = local.respostas || {};
     entrouEm = local.entrouEm || null;
   } else {
@@ -314,9 +322,15 @@ function enviarRespostas() {
   envioEmAndamento = true;
   envioPendente = false;
   mostrarSalvamento("salvando");
-  const corpo = JSON.stringify({ nome: nomeAtual, entrouEm, respostas: respostasLocais });
+  const corpo = JSON.stringify({ nome: nomeAtual, entrouEm, respostas: respostasLocais, sessao: sessaoAtual });
   fetch("/api/vote", { method: "POST", headers: { "Content-Type": "application/json" }, body: corpo })
-    .then(r => {
+    .then(async r => {
+      if (r.status === 409) { // sessão antiga: o facilitador zerou os votos
+        envioEmAndamento = false; envioPendente = false;
+        const d = await r.json().catch(() => ({}));
+        novaSessao(Number(d.sessao) || null);
+        return;
+      }
       if (!r.ok) throw new Error("HTTP " + r.status);
       envioEmAndamento = false;
       if (envioPendente) enviarRespostas();
@@ -364,8 +378,21 @@ function definirProgresso(pct, texto) {
   document.getElementById("progressLabel").textContent = texto || "";
 }
 
+// O facilitador zerou os votos: descarta tudo que este celular guardava e recomeça.
+function novaSessao(sessao) {
+  sessaoAtual = sessao || Date.now();
+  respostasLocais = {};
+  entrouEm = Date.now();
+  chaveRenderizada = null;
+  salvarLocal();
+  enviarRespostas(); // registra presença na sessão nova (sem respostas)
+}
+
 async function aplicarEstado(estado) {
   if (renderizando) return;
+  const sessao = Number(estado.sessao) || 1;
+  if (sessaoAtual !== null && sessao !== sessaoAtual) novaSessao(sessao);
+  if (sessaoAtual === null) sessaoAtual = sessao;
   const modo = estado.modo === "triagem" ? "triagem" : "completa";
   document.body.dataset.modo = (estado.etapa === -1 || estado.etapa === "fim") ? "" : modo;
 

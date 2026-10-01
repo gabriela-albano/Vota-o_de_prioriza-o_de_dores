@@ -8,7 +8,12 @@ import { getStore } from "@netlify/blobs";
 //   modo: "completa" (3 critérios, só nas dores "selecionada") | "triagem"
 //         (voto rápido sim/não, sobre TODAS as dores do banco, para decidir
 //         quais entram na rodada completa)
-const DEFAULT_STATE = { etapa: -1, duracaoSeg: 120, iniciadoEm: null, modo: "completa" };
+//   sessao: número que muda a cada "Zerar votos". Os participantes guardam as
+//         próprias respostas no celular e reenviam o conjunto completo a cada
+//         clique — sem isso, depois de zerar, o próximo clique de qualquer
+//         pessoa devolvia TODOS os votos antigos. Quando a sessao muda, o
+//         celular descarta o que tinha e começa do zero.
+const DEFAULT_STATE = { etapa: -1, duracaoSeg: 180, iniciadoEm: null, modo: "triagem", sessao: 1 };
 
 export default async (req) => {
   const store = getStore({ name: "votacao-priorizacao-estado", consistency: "strong" });
@@ -34,7 +39,9 @@ export default async (req) => {
       return new Response(JSON.stringify({ error: "Campo 'etapa' ausente." }), { status: 400 });
     }
 
+    const atual = (await store.get("estado", { type: "json" })) || DEFAULT_STATE;
     const novoEstado = {
+      sessao: Number(atual.sessao) || 1,
       etapa,
       duracaoSeg: Number(duracaoSeg) || DEFAULT_STATE.duracaoSeg,
       iniciadoEm: Date.now(),

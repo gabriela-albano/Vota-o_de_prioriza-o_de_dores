@@ -11,7 +11,7 @@ import { getStore } from "@netlify/blobs";
 // próprias respostas: ele manda SEMPRE o conjunto completo, um envio de cada
 // vez (fila), e o servidor só grava — não lê nada antes. Consistência forte.
 //
-// POST { nome, entrouEm, respostas }  → grava o registro inteiro
+// POST { nome, entrouEm, respostas, sessao }  → grava o registro inteiro (409 se sessao antiga)
 // GET  ?nome=Fulano                   → devolve o registro dessa pessoa
 //                                       (para restaurar se ela recarregar a página)
 
@@ -71,6 +71,17 @@ export default async (req) => {
   const chave = chaveDoNome(nome);
   if (!chave) {
     return new Response(JSON.stringify({ error: "Nome ausente." }), { status: 400 });
+  }
+
+  // Voto de uma sessão antiga (celular que ficou aberto antes de "Zerar votos")
+  // é recusado: o navegador recebe 409, descarta o que tinha e recomeça.
+  const estadoStore = getStore({ name: "votacao-priorizacao-estado", consistency: "strong" });
+  const estado = (await estadoStore.get("estado", { type: "json" })) || {};
+  const sessaoAtual = Number(estado.sessao) || 1;
+  if (body.sessao !== undefined && Number(body.sessao) !== sessaoAtual) {
+    return new Response(JSON.stringify({ error: "sessao-antiga", sessao: sessaoAtual }), {
+      status: 409, headers: { "Content-Type": "application/json" },
+    });
   }
 
   const registro = {
