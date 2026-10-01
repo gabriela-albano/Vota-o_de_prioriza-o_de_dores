@@ -105,6 +105,11 @@ function corDaDor(dor) {
   return { ...CORES_AREA[token], token };
 }
 
+// Número fixo do card (o mesmo da Oficina de priorização); sem número, usa a posição.
+function numeroDaDor(dor, indice) {
+  return dor && Number(dor.numero) > 0 ? Number(dor.numero) : indice + 1;
+}
+
 function formatarMult(m) {
   return "×" + m.toFixed(1).replace(".", ",");
 }

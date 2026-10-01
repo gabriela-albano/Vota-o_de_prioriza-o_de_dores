@@ -426,7 +426,7 @@ function renderDorAtual(etapa) {
 
   let html = `<div class="timer-wrap"><div class="timer" id="timerAtual">--:--</div></div>`;
   html += `<div class="card">
-    <div class="dor-num">DOR ${etapa + 1} DE ${DORES.length}</div>
+    <div class="dor-num">DOR Nº ${numeroDaDor(dor, etapa)} · ${etapa + 1}ª de ${DORES.length} desta rodada</div>
     <span class="area" style="--areacolor:${cor};--areabg:${bg}">${esc(rotuloArea(dor))}</span>
     <h2>${esc(dor.texto)}</h2>
     <div class="criterios-grid">`;
@@ -469,7 +469,7 @@ function renderTelaTriagem() {
     const sel = !!(respostasLocais[dor.id] && respostasLocais[dor.id][TRIAGEM_CRITERIO_ID] === 1);
     html += `<div class="item-triagem${sel ? " selecionada" : ""}" id="triagem-${dor.id}" onclick="alternarTriagem('${dor.id}')">
       <div class="marca">✓</div>
-      <div class="txt"><span class="area-mini" style="--areacolor:${cor}">${i + 1} · ${esc(rotuloArea(dor))}</span>${esc(dor.texto)}</div>
+      <div class="txt"><span class="area-mini" style="--areacolor:${cor}">Nº ${numeroDaDor(dor, i)} · ${esc(rotuloArea(dor))}</span>${esc(dor.texto)}</div>
     </div>`;
   });
   html += `</div>`;
@@ -534,7 +534,7 @@ function atualizarProgresso(estado) {
   const dor = DORES[etapa];
   const respondidos = dor ? CRITERIOS.filter(c => respostasLocais[dor.id] && respostasLocais[dor.id][c.id]).length : 0;
   definirProgresso(DORES.length ? ((etapa + 1) / DORES.length) * 100 : 0,
-    `Rodada 2 · dor ${etapa + 1} de ${DORES.length} · você respondeu ${respondidos} de ${CRITERIOS.length} critérios desta dor`);
+    `Rodada 2 · dor Nº ${numeroDaDor(dor, etapa)} (${etapa + 1}ª de ${DORES.length}) · você respondeu ${respondidos} de ${CRITERIOS.length} critérios desta dor`);
 }
 </script>
 </body>

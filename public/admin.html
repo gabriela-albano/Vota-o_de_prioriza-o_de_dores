@@ -218,9 +218,9 @@
     </div>
     <table>
       <thead>
-        <tr><th style="width:50px">Pos.</th><th>Dor</th><th class="criterio-cell">Marcações</th><th class="criterio-cell">Peso</th><th class="criterio-cell">Pontos</th></tr>
+        <tr><th style="width:50px">Pos.</th><th style="width:44px">Nº</th><th>Dor</th><th class="criterio-cell">Marcações</th><th class="criterio-cell">Peso</th><th class="criterio-cell">Pontos</th></tr>
       </thead>
-      <tbody id="triagemBody"><tr><td colspan="5" class="vazio">Ainda sem votos de triagem.</td></tr></tbody>
+      <tbody id="triagemBody"><tr><td colspan="6" class="vazio">Ainda sem votos de triagem.</td></tr></tbody>
     </table>
   </div>
 
@@ -228,7 +228,7 @@
   <div class="panel no-print">
     <h3>Gerenciar dores (banco editável)</h3>
     <p class="nota">
-      "Ativa" = entra na Rodada 2 (na ordem desta lista — é essa ordem que numera as dores). Os processos marcados definem o peso (1 processo ×1,0 · 2 processos ×1,2 · 3 processos ×1,3). Nada vale até clicar em "💾 Salvar alterações".
+      "Ativa" = entra na Rodada 2, na ordem desta lista. O "Nº" é o número fixo do card (o mesmo da Oficina de priorização) e não muda com o corte; "Ordem R2" é a posição na rodada. Os processos marcados definem o peso (1 processo ×1,0 · 2 processos ×1,2 · 3 processos ×1,3). Nada vale até clicar em "💾 Salvar alterações".
     </p>
     <div class="controle-topo" style="margin-top:10px">
       <button class="ghost" onclick="selecionarTodas(true)">☑ Selecionar todas</button>
@@ -242,7 +242,7 @@
         <thead>
           <tr>
             <th style="width:44px">Ativa</th>
-            <th style="width:44px">Nº R2</th>
+            <th style="width:44px">Nº</th><th style="width:44px">Ordem R2</th>
             <th style="width:130px">Área (rótulo livre)</th>
             <th>Texto da dor</th>
             <th style="width:150px">Processos → peso</th>
@@ -371,6 +371,7 @@ function renderCatalogo() {
     return `
     <tr>
       <td style="text-align:center"><input type="checkbox" ${ativa ? "checked" : ""} onchange="editarCampo(${i},'selecionada',this.checked)" /></td>
+      <td class="mono" style="text-align:center;font-weight:700">${numeroDaDor(d, i)}</td>
       <td class="mono" style="text-align:center">${num}</td>
       <td><input type="text" class="campo" value="${esc(d.area)}" onchange="editarCampo(${i},'area',this.value)" /></td>
       <td><textarea class="campo" style="min-height:40px;resize:vertical" onchange="editarCampo(${i},'texto',this.value)">${esc(d.texto)}</textarea></td>
@@ -405,7 +406,7 @@ function selecionarTodas(valor) {
 }
 
 function adicionarDor() {
-  CATALOGO.push({ id: "dor-nova-" + Date.now(), area: "", texto: "", processos: [], selecionada: true });
+  CATALOGO.push({ id: "dor-nova-" + Date.now(), numero: Math.max(0, ...CATALOGO.map(d => Number(d.numero) || 0)) + 1, area: "", texto: "", processos: [], selecionada: true });
   renderCatalogo();
   document.getElementById("catalogoBody").lastElementChild.scrollIntoView({ behavior: "smooth", block: "center" });
 }
@@ -508,7 +509,7 @@ function renderEstado() {
       box.innerHTML = `<div class="rotulo">${rotuloModo}</div><div class="texto">Etapa inválida (a lista de dores mudou). Clique em "Voltar para aguardando" e inicie de novo.</div>`;
       return;
     }
-    rotulo = `${rotuloModo} · dor ${estadoAtual.etapa + 1} de ${DORES.length} · ${esc(rotuloArea(dor))}`;
+    rotulo = `${rotuloModo} · dor Nº ${numeroDaDor(dor, estadoAtual.etapa)} (${estadoAtual.etapa + 1}ª de ${DORES.length}) · ${esc(rotuloArea(dor))}`;
     texto = esc(dor.texto);
   }
   const tick = () => {
@@ -654,7 +655,7 @@ function renderTriagem(votos) {
   const comVoto = ordenarTriagem(linhas.filter(l => l.marcacoes > 0));
   const tbody = document.getElementById("triagemBody");
   if (comVoto.length === 0) {
-    tbody.innerHTML = `<tr><td colspan="5" class="vazio">Ainda sem votos de triagem.</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="6" class="vazio">Ainda sem votos de triagem.</td></tr>`;
     return;
   }
   const n = Math.max(1, Number(document.getElementById("topNInput").value) || 12);
@@ -663,6 +664,7 @@ function renderTriagem(votos) {
     const dentro = pos < n;
     return `<tr class="${dentro ? "" : "fora-corte"}">
       <td class="mono">${pos + 1}º</td>
+      <td class="mono" style="font-weight:700">${numeroDaDor(l.dor, l.numeroTriagem - 1)}</td>
       <td class="dor-texto">
         <span class="area-tag" style="--areacolor:${cor};--areabg:${bg}">${esc(rotuloArea(l.dor))}</span>
         <div>${esc(l.dor.texto)}</div>
@@ -670,7 +672,7 @@ function renderTriagem(votos) {
       <td class="criterio-cell">${l.marcacoes}<div class="dist">de ${totalParticipantes} pessoa(s)</div></td>
       <td class="criterio-cell">${formatarMult(l.mult)}</td>
       <td class="criterio-cell"><span class="score">${String(l.pontos).replace(".", ",")}</span></td>
-    </tr>` + (pos === n - 1 && comVoto.length > n ? `<tr><td colspan="5" class="linha-corte">— linha de corte (top ${n}) —</td></tr>` : "");
+    </tr>` + (pos === n - 1 && comVoto.length > n ? `<tr><td colspan="6" class="linha-corte">— linha de corte (top ${n}) —</td></tr>` : "");
   }).join("");
 }
 
@@ -682,15 +684,12 @@ function aplicarCorteTriagem() {
   const mantidos = new Set(comVoto.slice(0, n).map(l => l.dor.id));
   // Mantidas = top N por pontos; todas as demais ficam desmarcadas.
   CATALOGO.forEach(d => { d.selecionada = mantidos.has(d.id); });
-  // Coloca as mantidas no topo, na ordem do ranking — vira a ordem (e a numeração) da Rodada 2.
-  const ordem = comVoto.slice(0, n).map(l => l.dor.id);
-  CATALOGO.sort((a, b) => {
-    const ia = ordem.indexOf(a.id), ib = ordem.indexOf(b.id);
-    return (ia === -1 ? 999 : ia) - (ib === -1 ? 999 : ib);
-  });
+  // Mantém a ordem e a numeração oficiais (fluxo do pedido ao pagamento): a Rodada 2
+  // segue a mesma sequência dos cards, só sem as dores cortadas.
+  CATALOGO.sort((a, b) => (Number(a.numero) || 999) - (Number(b.numero) || 999));
   DORES = CATALOGO.filter(d => d.selecionada !== false);
   renderCatalogo();
-  statusCatalogo(` · corte aplicado (top ${n}, na ordem do ranking) — confira e clique em Salvar`);
+  statusCatalogo(` · corte aplicado (top ${n}, na ordem do fluxo) — confira e clique em Salvar`);
   document.getElementById("catalogoBody").scrollIntoView({ behavior: "smooth", block: "start" });
 }
 
@@ -731,7 +730,7 @@ function calcularLinhas(votos) {
       base = CRITERIOS.reduce((s, c) => s + modas[c.id].valor * c.peso, 0);
       score = +(base * mult).toFixed(1);
     }
-    return { dor, numero: i + 1, modas, completos, temAlgum, faltando, mult, base, score };
+    return { dor, numero: numeroDaDor(dor, i), modas, completos, temAlgum, faltando, mult, base, score };
   });
 }
 
