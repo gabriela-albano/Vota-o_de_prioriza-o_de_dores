@@ -8,7 +8,7 @@ export default async (req) => {
     return new Response(JSON.stringify({ error: "Método não permitido." }), { status: 405 });
   }
 
-  const store = getStore("votacao-priorizacao");
+  const store = getStore({ name: "votacao-priorizacao", consistency: "strong" });
   const { blobs } = await store.list();
   for (const b of blobs) {
     await store.delete(b.key);
@@ -16,7 +16,7 @@ export default async (req) => {
 
   // Também volta o modo guiado para "não iniciado", para não ficar preso
   // numa etapa antiga depois de zerar os votos de teste.
-  const estadoStore = getStore("votacao-priorizacao-estado");
+  const estadoStore = getStore({ name: "votacao-priorizacao-estado", consistency: "strong" });
   await estadoStore.setJSON("estado", { etapa: -1, duracaoSeg: 120, iniciadoEm: null, modo: "completa" });
 
   return new Response(JSON.stringify({ ok: true, removidos: blobs.length }), {

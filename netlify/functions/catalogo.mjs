@@ -48,21 +48,54 @@ const SEED = [
 
 const PROCESSOS_VALIDOS = ["PJ", "PF", "EF"];
 
+// Critérios de avaliação — texto padrão (editável no painel de admin, em
+// "Critérios de avaliação"; o que for salvo lá substitui isto).
+const CRITERIOS_PADRAO = [
+  {
+    id: "c1",
+    titulo: "Consequência de falha",
+    pergunta: "Se essa dor continuar exatamente como está pelo próximo ano, o estrago para o trabalho seria:",
+    escala: ["Pequeno", "Incômodo", "Sério", "Grave"],
+  },
+  {
+    id: "c2",
+    titulo: "Impacto de retrabalho",
+    pergunta: "Considere a frequência com que essa dor ocorre ou o volume de trabalho gerado por ela:",
+    escala: ["Pequeno", "Incômodo", "Sério", "Grave"],
+  },
+  {
+    id: "c3",
+    titulo: "Potencial de automação",
+    pergunta: "O quanto essa dor parece resolvível com tecnologia ou sistema, hoje:",
+    escala: ["Muito difícil", "Daria trabalho", "Em parte, sim", "Fácil, é só integrar/automatizar"],
+  },
+];
+const PESOS = { c1: 3, c2: 2, c3: 1 };
+
+// Descobre os processos de uma dor salva ANTES do campo "processos" existir:
+// 1º pelo id (tabela oficial acima), 2º pelas siglas escritas no rótulo de área.
+const SEED_POR_ID = Object.fromEntries(SEED.map((d) => [d.id, d.processos]));
+function processosDe(d) {
+  if (Array.isArray(d.processos)) {
+    return PROCESSOS_VALIDOS.filter((p) => d.processos.includes(p));
+  }
+  if (SEED_POR_ID[d.id]) return [...SEED_POR_ID[d.id]];
+  const area = String(d.area || "").toUpperCase();
+  return PROCESSOS_VALIDOS.filter((p) => new RegExp("\\b" + p + "\\b").test(area));
+}
+
 function sanitizar(dores) {
   if (!Array.isArray(dores)) return [];
   return dores
     .filter((d) => d && typeof d === "object")
     .map((d, i) => {
-      const processos = Array.isArray(d.processos)
-        ? [...new Set(d.processos.filter((p) => PROCESSOS_VALIDOS.includes(p)))]
-        : [];
+      const processos = processosDe(d);
       return {
         id: String(d.id || `dor-nova-${Date.now()}-${i}`).slice(0, 60),
         area: String(d.area || "").slice(0, 60),
         texto: String(d.texto || "").slice(0, 500),
         processos,
-        // mantido por compatibilidade com qualquer leitura antiga do campo —
-        // a fonte de verdade do peso é sempre processos.length, nunca isto.
+        // mantido por compatibilidade — a fonte de verdade do peso é processos.length
         transversal: processos.length > 1,
         selecionada: d.selecionada !== false,
       };
@@ -70,19 +103,51 @@ function sanitizar(dores) {
     .filter((d) => d.texto.trim().length > 0);
 }
 
+function sanitizarCriterios(criterios) {
+  if (!Array.isArray(criterios)) return null;
+  const porId = Object.fromEntries(criterios.filter((c) => c && c.id).map((c) => [c.id, c]));
+  return CRITERIOS_PADRAO.map((padrao) => {
+    const c = porId[padrao.id] || {};
+    const escala = Array.isArray(c.escala) ? c.escala : padrao.escala;
+    return {
+      id: padrao.id,
+      peso: PESOS[padrao.id],
+      titulo: String(c.titulo || padrao.titulo).slice(0, 80),
+      pergunta: String(c.pergunta || padrao.pergunta).slice(0, 400),
+      escala: [0, 1, 2, 3].map((i) => String(escala[i] || padrao.escala[i]).slice(0, 60)),
+    };
+  });
+}
+
+function responder(obj) {
+  return new Response(JSON.stringify(obj), {
+    status: 200,
+    headers: { "Content-Type": "application/json", "Cache-Control": "no-store" },
+  });
+}
+
 export default async (req) => {
-  const store = getStore("votacao-priorizacao-catalogo");
+  const store = getStore({ name: "votacao-priorizacao-catalogo", consistency: "strong" });
+
+  let catalogo = await store.get("catalogo", { type: "json" });
+  let precisaSalvar = false;
+  if (!catalogo || !Array.isArray(catalogo.dores) || catalogo.dores.length === 0) {
+    catalogo = { dores: SEED, atualizadoEm: Date.now() };
+    precisaSalvar = true;
+  }
+  // migração: dores salvas antes do campo "processos" ganham a classificação
+  if (catalogo.dores.some((d) => !Array.isArray(d.processos))) {
+    catalogo.dores = sanitizar(catalogo.dores);
+    precisaSalvar = true;
+  }
+  if (!Array.isArray(catalogo.criterios)) {
+    catalogo.criterios = sanitizarCriterios(CRITERIOS_PADRAO);
+    precisaSalvar = true;
+  }
 
   if (req.method === "GET") {
-    let catalogo = await store.get("catalogo", { type: "json" });
-    if (!catalogo || !Array.isArray(catalogo.dores) || catalogo.dores.length === 0) {
-      catalogo = { dores: SEED, atualizadoEm: Date.now() };
-      await store.setJSON("catalogo", catalogo);
-    }
-    return new Response(JSON.stringify(catalogo), {
-      status: 200,
-      headers: { "Content-Type": "application/json" },
-    });
+    if (precisaSalvar) await store.setJSON("catalogo", catalogo);
+    return responder(catalogo);
   }
 
   if (req.method === "POST") {
@@ -92,15 +157,13 @@ export default async (req) => {
     } catch {
       return new Response(JSON.stringify({ error: "JSON inválido." }), { status: 400 });
     }
-
-    const dores = sanitizar(body && body.dores);
-    const catalogo = { dores, atualizadoEm: Date.now() };
+    // Pode salvar só as dores, só os critérios, ou os dois.
+    if (body && Array.isArray(body.dores)) catalogo.dores = sanitizar(body.dores);
+    const crit = body && sanitizarCriterios(body.criterios);
+    if (crit) catalogo.criterios = crit;
+    catalogo.atualizadoEm = Date.now();
     await store.setJSON("catalogo", catalogo);
-
-    return new Response(JSON.stringify(catalogo), {
-      status: 200,
-      headers: { "Content-Type": "application/json" },
-    });
+    return responder(catalogo);
   }
 
   return new Response(JSON.stringify({ error: "Método não permitido." }), { status: 405 });

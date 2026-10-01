@@ -42,7 +42,12 @@
   .mono { font-family:'IBM Plex Mono', monospace; }
 
   .wrap{ max-width:640px; margin:0 auto; padding:24px 16px 80px; }
-  header.top{ text-align:center; padding:8px 0 20px; }
+  /* desktop: telas de votação ficam mais largas para reduzir rolagem */
+  @media (min-width: 900px){
+    body[data-modo="triagem"] .wrap{ max-width:1280px; }
+    body[data-modo="completa"] .wrap{ max-width:1160px; }
+  }
+  header.top{ text-align:center; padding:8px 0 12px; }
   header.top .brand{
     font-family:'IBM Plex Mono', monospace; font-size:.72rem; letter-spacing:.08em;
     text-transform:uppercase; color:var(--text-faint); margin-bottom:6px;
@@ -50,8 +55,10 @@
   header.top h1{ font-size:1.3rem; margin:0 0 4px; font-weight:600; }
   header.top p{ color:var(--text-muted); font-size:.9rem; margin:0; }
 
-  .progress{ height:6px; background:var(--surface-3); border-radius:999px; overflow:hidden; margin:16px 0 24px; }
+  .progress-wrap{ margin:12px 0 20px; }
+  .progress{ height:6px; background:var(--surface-3); border-radius:999px; overflow:hidden; }
   .progress > div{ height:100%; background:var(--coral-fill); transition:width .2s ease; }
+  .progress-label{ font-size:.78rem; color:var(--text-muted); text-align:center; margin-top:6px; min-height:1em; }
 
   .card{
     background:var(--surface); border:1px solid var(--line); border-radius:var(--radius);
@@ -63,7 +70,8 @@
     color:var(--areacolor, var(--coral)); background:var(--areabg, var(--coral-soft));
     padding:3px 8px; border-radius:999px; margin-bottom:10px;
   }
-  .card h2{ font-size:1.1rem; line-height:1.4; margin:0 0 18px; font-weight:600; }
+  .dor-num{ font-family:'IBM Plex Mono',monospace; font-size:.8rem; font-weight:600; color:var(--text-faint); margin-bottom:6px; }
+  .card h2{ font-size:1.15rem; line-height:1.4; margin:0 0 18px; font-weight:600; }
 
   .timer-wrap{ display:flex; justify-content:center; margin-bottom:14px; }
   .timer{
@@ -73,9 +81,13 @@
   }
   .timer.acabando{ color:#fff; background:var(--coral); }
 
-  .criterio{ margin-bottom:18px; }
-  .criterio:last-child{ margin-bottom:0; }
-  .criterio .titulo{ font-weight:600; font-size:.92rem; margin-bottom:2px; }
+  .criterios-grid{ display:grid; grid-template-columns:1fr; gap:18px; }
+  @media (min-width: 900px){
+    .criterios-grid{ grid-template-columns:repeat(3,1fr); gap:16px; }
+    .criterios-grid .criterio{ background:var(--surface-2); border-radius:12px; padding:14px; }
+    .criterios-grid .escala{ grid-template-columns:repeat(2,1fr); }
+  }
+  .criterio .titulo{ font-weight:600; font-size:.95rem; margin-bottom:2px; }
   .criterio .pergunta{ color:var(--text-muted); font-size:.85rem; margin-bottom:10px; }
 
   .escala{ display:grid; grid-template-columns:repeat(4,1fr); gap:8px; }
@@ -84,7 +96,7 @@
   .escala span{
     display:flex; flex-direction:column; align-items:center; justify-content:center; gap:4px;
     border:1.5px solid var(--line); border-radius:10px; padding:10px 4px;
-    font-size:.72rem; text-align:center; line-height:1.2; min-height:56px;
+    font-size:.74rem; text-align:center; line-height:1.2; min-height:56px;
     color:var(--text-muted); transition:all .12s ease; background:var(--surface);
   }
   .escala span b{ font-size:.95rem; color:var(--text); }
@@ -110,7 +122,7 @@
   .contador-triagem .num{ font-family:'IBM Plex Mono',monospace; font-weight:700; font-size:1.2rem; }
   .contador-triagem .num.cheio{ color:var(--coral); }
   .contador-triagem .aviso{ font-size:.78rem; color:var(--coral); margin-top:2px; min-height:1.1em; }
-  .lista-triagem{ display:flex; flex-direction:column; gap:8px; }
+  .lista-triagem{ display:grid; grid-template-columns:repeat(auto-fill, minmax(300px, 1fr)); gap:8px; }
   .item-triagem{
     display:flex; align-items:flex-start; gap:10px; cursor:pointer; user-select:none;
     background:var(--surface); border:1.5px solid var(--line); border-radius:12px;
@@ -123,7 +135,7 @@
   }
   .item-triagem.selecionada{ border-color:var(--coral); background:var(--coral-soft); }
   .item-triagem.selecionada .marca{ background:var(--coral-fill); border-color:var(--coral-fill); color:#fff; }
-  .item-triagem .txt{ flex:1; font-size:.92rem; line-height:1.35; }
+  .item-triagem .txt{ flex:1; font-size:.9rem; line-height:1.35; }
   .item-triagem .txt .area-mini{
     display:block; font-family:'IBM Plex Mono',monospace; font-size:.62rem; font-weight:600;
     letter-spacing:.04em; text-transform:uppercase; color:var(--areacolor, var(--text-faint)); margin-bottom:3px;
@@ -137,6 +149,15 @@
   .center p{ color:var(--text-muted); margin:0; }
   .pulse{ animation:pulse 1.6s ease-in-out infinite; }
   @keyframes pulse{ 0%,100%{opacity:1;} 50%{opacity:.4;} }
+
+  .salvamento{
+    position:fixed; right:16px; bottom:16px; z-index:10; font-size:.78rem; font-weight:600;
+    padding:6px 12px; border-radius:999px; background:var(--surface); border:1px solid var(--line);
+    color:var(--text-muted); box-shadow:var(--shadow); display:none;
+  }
+  .salvamento.ok{ display:block; color:#3E8A4E; }
+  .salvamento.salvando{ display:block; }
+  .salvamento.erro{ display:block; color:var(--coral); border-color:var(--coral); }
 </style>
 </head>
 <body>
@@ -145,10 +166,13 @@
     <img src="" id="logoCgpi" alt="Logo CGPI" style="height:40px;margin-bottom:10px" />
     <div class="brand">CGPI · Sefaz-SP</div>
     <h1>Votação de Priorização de Dores</h1>
-    <p>Avalie cada dor nos 3 critérios, quando ela aparecer na tela</p>
+    <p id="subtitulo">Aguarde as instruções do facilitador</p>
   </header>
 
-  <div class="progress"><div id="progressBar" style="width:0%"></div></div>
+  <div class="progress-wrap">
+    <div class="progress"><div id="progressBar" style="width:0%"></div></div>
+    <div class="progress-label" id="progressLabel"></div>
+  </div>
 
   <!-- TELA 0: nome -->
   <div class="screen active" id="screen-nome">
@@ -176,99 +200,193 @@
   <div class="screen" id="screen-fim">
     <div class="center">
       <div class="icon">✅</div>
-      <h2>Votação encerrada</h2>
-      <p>Obrigado por participar — pode voltar para o grupo.</p>
+      <h2 id="fimTitulo">Rodada encerrada</h2>
+      <p>Obrigado! Se houver uma próxima rodada, ela aparece aqui automaticamente — não feche esta página.</p>
     </div>
   </div>
 </div>
 
+<div class="salvamento" id="salvamento"></div>
+
 <script src="dores.js"></script>
 <script>
 let nomeAtual = "";
-let etapaRenderizada = null;
-let poll = null;
-let countdownInt = null;
-let DORES = []; // carregado do banco de dores (/api/catalogo) — só as marcadas como "selecionada" (usado na rodada completa)
-let CATALOGO_COMPLETO = []; // TODAS as dores do banco, inclusive as desmarcadas (usado na rodada de triagem)
-let modoAtual = "completa";
-let telaTriagemMontada = false;
+let entrouEm = null;
+let respostasLocais = {};     // FONTE DA VERDADE das respostas desta pessoa (enviada inteira a cada mudança)
+let DORES = [];               // dores da rodada completa (as "Ativas")
+let CATALOGO_COMPLETO = [];   // todas as dores do banco (rodada de triagem)
+let modoAtual = null;
+let chaveRenderizada = null;  // "modo|etapa" da tela montada agora
+let renderizando = false;
 let tempoEsgotado = false;
-const respostasLocais = {}; // cache local só para refletir seleção já feita nesta sessão
+let countdownInt = null;
+let poll = null;
 
 document.getElementById("logoCgpi").src = LOGO_CGPI;
 
+// ---------- memória local (sobrevive a recarregar a página) ----------
+const LS_KEY = "votacao-cgpi-participante";
+function salvarLocal() {
+  try { localStorage.setItem(LS_KEY, JSON.stringify({ nome: nomeAtual, entrouEm, respostas: respostasLocais })); } catch (e) {}
+}
+function lerLocal() {
+  try { return JSON.parse(localStorage.getItem(LS_KEY) || "null"); } catch (e) { return null; }
+}
+function normalizarNome(n) {
+  return String(n || "").trim().toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/\s+/g, " ");
+}
+(function preencherNome() {
+  const local = lerLocal();
+  if (local && local.nome) document.getElementById("inputNome").value = local.nome;
+})();
+document.getElementById("inputNome").addEventListener("keydown", e => { if (e.key === "Enter") entrar(); });
+
 async function carregarCatalogo() {
   try {
-    const res = await fetch("/api/catalogo");
+    const res = await fetch("/api/catalogo", { cache: "no-store" });
     const data = await res.json();
     CATALOGO_COMPLETO = data.dores || [];
     DORES = CATALOGO_COMPLETO.filter(d => d.selecionada !== false);
-  } catch (e) {
-    CATALOGO_COMPLETO = [];
-    DORES = [];
-  }
+    aplicarCriteriosDoServidor(data.criterios);
+  } catch (e) { /* mantém o que já tinha */ }
 }
 
 async function entrar() {
   const nome = document.getElementById("inputNome").value.trim();
   if (!nome) { alert("Digite seu nome para continuar."); return; }
   nomeAtual = nome;
+
+  // recupera respostas anteriores (se a pessoa recarregou a página)
+  const local = lerLocal();
+  if (local && normalizarNome(local.nome) === normalizarNome(nome)) {
+    respostasLocais = local.respostas || {};
+    entrouEm = local.entrouEm || null;
+  } else {
+    respostasLocais = {};
+  }
+  try {
+    const r = await fetch("/api/vote?nome=" + encodeURIComponent(nome), { cache: "no-store" });
+    const d = await r.json();
+    const reg = d && d.registro;
+    if (reg && reg.respostas) {
+      Object.entries(reg.respostas).forEach(([doreId, crits]) => {
+        if (!respostasLocais[doreId]) respostasLocais[doreId] = {};
+        Object.entries(crits).forEach(([c, v]) => {
+          if (respostasLocais[doreId][c] === undefined) respostasLocais[doreId][c] = v;
+        });
+      });
+      entrouEm = entrouEm || reg.entrouEm;
+    }
+  } catch (e) {}
+  if (!entrouEm) entrouEm = Date.now();
+
   await carregarCatalogo();
+  enviarRespostas(); // registra presença ("entrou na dinâmica")
   trocarTela("screen-aguardando");
   iniciarPolling();
 }
 
+// ---------- envio das respostas: um por vez, sempre o conjunto completo ----------
+let envioEmAndamento = false, envioPendente = false, retryTimer = null;
+function enviarRespostas() {
+  salvarLocal();
+  if (envioEmAndamento) { envioPendente = true; return; }
+  envioEmAndamento = true;
+  envioPendente = false;
+  mostrarSalvamento("salvando");
+  const corpo = JSON.stringify({ nome: nomeAtual, entrouEm, respostas: respostasLocais });
+  fetch("/api/vote", { method: "POST", headers: { "Content-Type": "application/json" }, body: corpo })
+    .then(r => {
+      if (!r.ok) throw new Error("HTTP " + r.status);
+      envioEmAndamento = false;
+      if (envioPendente) enviarRespostas();
+      else mostrarSalvamento("ok");
+    })
+    .catch(() => {
+      envioEmAndamento = false;
+      mostrarSalvamento("erro");
+      clearTimeout(retryTimer);
+      retryTimer = setTimeout(enviarRespostas, 2000);
+    });
+}
+function mostrarSalvamento(estado) {
+  const el = document.getElementById("salvamento");
+  el.className = "salvamento " + estado;
+  el.textContent = estado === "ok" ? "✓ respostas salvas"
+    : estado === "salvando" ? "salvando…"
+    : "sem conexão — tentando de novo…";
+}
+
 function trocarTela(id) {
+  const atual = document.querySelector(".screen.active");
+  if (atual && atual.id === id) return;
   document.querySelectorAll(".screen").forEach(s => s.classList.remove("active"));
   document.getElementById(id).classList.add("active");
   window.scrollTo(0, 0);
 }
 
 function iniciarPolling() {
+  clearInterval(poll);
   checarEstado();
   poll = setInterval(checarEstado, 1500);
 }
 
 async function checarEstado() {
   try {
-    const res = await fetch("/api/estado");
+    const res = await fetch("/api/estado", { cache: "no-store" });
     const estado = await res.json();
-    aplicarEstado(estado);
-  } catch (e) { /* silencioso — tenta de novo no próximo tick */ }
+    await aplicarEstado(estado);
+  } catch (e) { /* tenta de novo no próximo tick */ }
 }
 
-function aplicarEstado(estado) {
+function definirProgresso(pct, texto) {
+  document.getElementById("progressBar").style.width = Math.max(0, Math.min(100, pct)) + "%";
+  document.getElementById("progressLabel").textContent = texto || "";
+}
+
+async function aplicarEstado(estado) {
+  if (renderizando) return;
+  const modo = estado.modo === "triagem" ? "triagem" : "completa";
+  document.body.dataset.modo = (estado.etapa === -1 || estado.etapa === "fim") ? "" : modo;
+
   if (estado.etapa === -1) {
+    chaveRenderizada = null; modoAtual = null;
+    clearInterval(countdownInt);
+    document.getElementById("subtitulo").textContent = "Aguarde as instruções do facilitador";
+    definirProgresso(0, "");
     trocarTela("screen-aguardando");
     return;
   }
   if (estado.etapa === "fim") {
-    clearInterval(poll); clearInterval(countdownInt);
+    chaveRenderizada = null; modoAtual = null;
+    clearInterval(countdownInt);
+    document.getElementById("fimTitulo").textContent =
+      modo === "triagem" ? "Rodada 1 (triagem) encerrada" : "Rodada 2 (priorização) encerrada";
+    definirProgresso(100, "Rodada concluída");
     trocarTela("screen-fim");
-    return;
+    return; // continua consultando: a próxima rodada aparece sozinha
   }
 
-  const modoMudou = estado.modo !== modoAtual;
-  modoAtual = estado.modo || "completa";
-
-  if (modoAtual === "triagem") {
-    // rodada de triagem é uma tela única (todas as dores juntas) — não avança
-    // por "etapa" como a rodada completa; só remonta se ainda não montou ou
-    // se acabou de trocar de modo.
-    if (modoMudou || !telaTriagemMontada) {
+  const chave = modo + "|" + estado.etapa;
+  if (chave !== chaveRenderizada) {
+    renderizando = true;
+    try {
+      await carregarCatalogo(); // pega o corte da triagem e os critérios atualizados
+    } finally {
+      renderizando = false;
+    }
+    modoAtual = modo;
+    chaveRenderizada = chave;
+    if (modo === "triagem") {
+      document.getElementById("subtitulo").textContent = "Rodada 1 · Triagem — marque as dores que devem seguir";
       renderTelaTriagem();
-      telaTriagemMontada = true;
-      trocarTela("screen-dor");
+    } else {
+      document.getElementById("subtitulo").textContent = "Rodada 2 · Priorização — avalie a dor nos 3 critérios";
+      renderDorAtual(estado.etapa);
     }
-  } else {
-    telaTriagemMontada = false;
-    if (estado.etapa !== etapaRenderizada || modoMudou) {
-      etapaRenderizada = estado.etapa;
-      renderDorAtual(DORES[estado.etapa]);
-      trocarTela("screen-dor");
-    }
+    trocarTela("screen-dor");
   }
-
+  atualizarProgresso(estado);
   atualizarCronometro(estado);
 }
 
@@ -283,8 +401,7 @@ function atualizarCronometro(estado) {
     el.classList.toggle("acabando", restante <= 15);
     tempoEsgotado = restante <= 0;
     document.querySelectorAll("#screen-dor input[type=radio]").forEach(i => i.disabled = tempoEsgotado);
-    const container = document.getElementById("screen-dor");
-    if (container) container.classList.toggle("tempo-esgotado", tempoEsgotado);
+    document.getElementById("screen-dor").classList.toggle("tempo-esgotado", tempoEsgotado);
     if (restante <= 0) clearInterval(countdownInt);
   };
   tick();
@@ -296,31 +413,28 @@ function formatarTempo(seg) {
   return m + ":" + String(s).padStart(2, "0");
 }
 
-const AREA_COLOR = {
-  PJ: ["--pj", "rgba(185,106,68,.12)"],
-  PF: ["--pf", "rgba(46,132,132,.12)"],
-  EF: ["--ef", "rgba(74,90,140,.12)"],
-};
-function corArea(area) {
-  const chave = Object.keys(AREA_COLOR).find(k => area.startsWith(k));
-  if (chave) return { cor: `var(${AREA_COLOR[chave][0]})`, bg: AREA_COLOR[chave][1] };
-  return { cor: "var(--cross)", bg: "rgba(124,82,149,.12)" };
-}
-
-function renderDorAtual(dor) {
+function renderDorAtual(etapa) {
   const container = document.getElementById("screen-dor");
+  const dor = DORES[etapa];
+  if (!dor) {
+    container.innerHTML = `<div class="center pulse"><div class="icon">⏳</div><h2>Aguarde</h2><p>O facilitador está ajustando a lista de dores.</p></div>`;
+    chaveRenderizada = null; // tenta de novo no próximo tick
+    return;
+  }
   const jaRespondido = respostasLocais[dor.id] || {};
-  const { cor, bg } = corArea(dor.area);
+  const { cor, bg } = corDaDor(dor);
 
   let html = `<div class="timer-wrap"><div class="timer" id="timerAtual">--:--</div></div>`;
   html += `<div class="card">
-    <span class="area" style="--areacolor:${cor};--areabg:${bg}">${dor.area}</span>
-    <h2>${dor.texto}</h2>`;
+    <div class="dor-num">DOR ${etapa + 1} DE ${DORES.length}</div>
+    <span class="area" style="--areacolor:${cor};--areabg:${bg}">${esc(rotuloArea(dor))}</span>
+    <h2>${esc(dor.texto)}</h2>
+    <div class="criterios-grid">`;
 
-  CRITERIOS.forEach(crit => {
+  CRITERIOS.forEach((crit, ci) => {
     html += `<div class="criterio">
-      <div class="titulo">${crit.titulo}</div>
-      <div class="pergunta">${crit.pergunta}</div>
+      <div class="titulo">C${ci + 1} · ${esc(crit.titulo)}</div>
+      <div class="pergunta">${esc(crit.pergunta)}</div>
       <div class="escala">`;
     crit.escala.forEach((label, i) => {
       const valor = i + 1;
@@ -328,52 +442,44 @@ function renderDorAtual(dor) {
       html += `<label>
         <input type="radio" name="${dor.id}__${crit.id}" value="${valor}" ${checked}
           onchange="responder('${dor.id}','${crit.id}',${valor})" />
-        <span><b>${valor}</b>${label}</span>
+        <span><b>${valor}</b>${esc(label)}</span>
       </label>`;
     });
     html += `</div></div>`;
   });
-  html += `</div>`;
+  html += `</div></div>`;
   html += `<p style="text-align:center;color:var(--text-muted);font-size:.82rem">Sua resposta é salva assim que você clica — não precisa apertar nada para confirmar.</p>`;
-
   container.innerHTML = html;
 }
 
-// Tela da rodada de triagem: TODAS as dores juntas numa lista, cada pessoa
-// marca no máximo ORCAMENTO_VOTOS_TRIAGEM delas (as que acha que merecem
-// seguir para a rodada completa) — dot voting simples, sem empilhar mais de
-// uma marcação na mesma dor. O resultado (nº de marcações) fica visível no
-// painel de admin para o facilitador decidir o corte.
+// Rodada 1 — triagem (dot voting): todas as dores juntas, cada pessoa marca até ORCAMENTO_VOTOS_TRIAGEM.
 function renderTelaTriagem() {
   const container = document.getElementById("screen-dor");
-
   let html = `<div class="timer-wrap"><div class="timer" id="timerAtual">--:--</div></div>`;
   html += `<div class="contador-triagem">
     <div><span class="num" id="contadorTriagemNum">0</span> de ${ORCAMENTO_VOTOS_TRIAGEM} marcadas</div>
     <div class="aviso" id="avisoTriagem"></div>
   </div>`;
   html += `<p style="text-align:center;color:var(--text-muted);font-size:.85rem;margin-top:-4px">
-    Marque até <b>${ORCAMENTO_VOTOS_TRIAGEM}</b> dores que você acha que merecem entrar na rodada completa de priorização.
+    Marque até <b>${ORCAMENTO_VOTOS_TRIAGEM}</b> dores que você acha que merecem entrar na rodada de priorização.
   </p>`;
   html += `<div class="lista-triagem">`;
-  CATALOGO_COMPLETO.forEach(dor => {
-    const { cor } = corArea(dor.area);
-    const selecionada = !!(respostasLocais[dor.id] && respostasLocais[dor.id][TRIAGEM_CRITERIO_ID] === 1);
-    html += `<div class="item-triagem${selecionada ? " selecionada" : ""}" id="triagem-${dor.id}" onclick="alternarTriagem('${dor.id}')">
+  CATALOGO_COMPLETO.forEach((dor, i) => {
+    const { cor } = corDaDor(dor);
+    const sel = !!(respostasLocais[dor.id] && respostasLocais[dor.id][TRIAGEM_CRITERIO_ID] === 1);
+    html += `<div class="item-triagem${sel ? " selecionada" : ""}" id="triagem-${dor.id}" onclick="alternarTriagem('${dor.id}')">
       <div class="marca">✓</div>
-      <div class="txt"><span class="area-mini" style="--areacolor:${cor}">${dor.area}</span>${dor.texto}</div>
+      <div class="txt"><span class="area-mini" style="--areacolor:${cor}">${i + 1} · ${esc(rotuloArea(dor))}</span>${esc(dor.texto)}</div>
     </div>`;
   });
   html += `</div>`;
-
   container.innerHTML = html;
   atualizarContadorTriagem();
 }
 
 function contarSelecionadasTriagem() {
-  let total = 0;
-  Object.values(respostasLocais).forEach(r => { if (r && r[TRIAGEM_CRITERIO_ID] === 1) total++; });
-  return total;
+  // só conta dores que existem no banco atual
+  return CATALOGO_COMPLETO.filter(d => respostasLocais[d.id] && respostasLocais[d.id][TRIAGEM_CRITERIO_ID] === 1).length;
 }
 
 function atualizarContadorTriagem() {
@@ -389,56 +495,46 @@ function atualizarContadorTriagem() {
 
 function alternarTriagem(doreId) {
   if (tempoEsgotado) return;
-  const jaSelecionada = !!(respostasLocais[doreId] && respostasLocais[doreId][TRIAGEM_CRITERIO_ID] === 1);
-  if (!jaSelecionada && contarSelecionadasTriagem() >= ORCAMENTO_VOTOS_TRIAGEM) {
-    // já bateu o teto — ignora o clique numa dor ainda não marcada
+  const jaSel = !!(respostasLocais[doreId] && respostasLocais[doreId][TRIAGEM_CRITERIO_ID] === 1);
+  if (!jaSel && contarSelecionadasTriagem() >= ORCAMENTO_VOTOS_TRIAGEM) {
     const avisoEl = document.getElementById("avisoTriagem");
     if (avisoEl) avisoEl.textContent = "Limite atingido — desmarque uma para trocar por outra.";
     return;
   }
   if (!respostasLocais[doreId]) respostasLocais[doreId] = {};
-  const novoValor = jaSelecionada ? 0 : 1;
-  respostasLocais[doreId][TRIAGEM_CRITERIO_ID] = novoValor;
-
+  const novo = jaSel ? 0 : 1;
+  respostasLocais[doreId][TRIAGEM_CRITERIO_ID] = novo;
   const el = document.getElementById("triagem-" + doreId);
-  if (el) el.classList.toggle("selecionada", novoValor === 1);
+  if (el) el.classList.toggle("selecionada", novo === 1);
   atualizarContadorTriagem();
   atualizarProgresso();
-
-  fetch("/api/vote", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ nome: nomeAtual, doreId, criterioId: TRIAGEM_CRITERIO_ID, valor: novoValor }),
-  }).catch(() => { /* mantém a marcação local mesmo se a rede falhar num clique isolado */ });
+  enviarRespostas();
 }
 
-async function responder(doreId, critId, valor) {
+function responder(doreId, critId, valor) {
+  if (tempoEsgotado) return;
   if (!respostasLocais[doreId]) respostasLocais[doreId] = {};
   respostasLocais[doreId][critId] = valor;
   atualizarProgresso();
-
-  try {
-    await fetch("/api/vote", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ nome: nomeAtual, doreId, criterioId: critId, valor }),
-    });
-  } catch (e) { /* mantém a marcação local mesmo se a rede falhar num clique isolado */ }
+  enviarRespostas();
 }
 
-function atualizarProgresso() {
+// Barra de progresso POR RODADA.
+let ultimoEstado = null;
+function atualizarProgresso(estado) {
+  if (estado) ultimoEstado = estado;
+  const e = ultimoEstado;
+  if (!e || modoAtual === null) return;
   if (modoAtual === "triagem") {
-    const pct = ORCAMENTO_VOTOS_TRIAGEM
-      ? Math.round((contarSelecionadasTriagem() / ORCAMENTO_VOTOS_TRIAGEM) * 100)
-      : 0;
-    document.getElementById("progressBar").style.width = Math.min(pct, 100) + "%";
+    const n = contarSelecionadasTriagem();
+    definirProgresso((n / ORCAMENTO_VOTOS_TRIAGEM) * 100, `Rodada 1 · ${n} de ${ORCAMENTO_VOTOS_TRIAGEM} marcações usadas`);
     return;
   }
-  const total = DORES.length * CRITERIOS.length;
-  let feito = 0;
-  Object.values(respostasLocais).forEach(r => { feito += Object.keys(r).length; });
-  const pct = total ? Math.round((feito / total) * 100) : 0;
-  document.getElementById("progressBar").style.width = pct + "%";
+  const etapa = Number(e.etapa);
+  const dor = DORES[etapa];
+  const respondidos = dor ? CRITERIOS.filter(c => respostasLocais[dor.id] && respostasLocais[dor.id][c.id]).length : 0;
+  definirProgresso(DORES.length ? ((etapa + 1) / DORES.length) * 100 : 0,
+    `Rodada 2 · dor ${etapa + 1} de ${DORES.length} · você respondeu ${respondidos} de ${CRITERIOS.length} critérios desta dor`);
 }
 </script>
 </body>

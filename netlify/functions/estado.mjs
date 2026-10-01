@@ -11,13 +11,13 @@ import { getStore } from "@netlify/blobs";
 const DEFAULT_STATE = { etapa: -1, duracaoSeg: 120, iniciadoEm: null, modo: "completa" };
 
 export default async (req) => {
-  const store = getStore("votacao-priorizacao-estado");
+  const store = getStore({ name: "votacao-priorizacao-estado", consistency: "strong" });
 
   if (req.method === "GET") {
     const estado = (await store.get("estado", { type: "json" })) || DEFAULT_STATE;
     return new Response(JSON.stringify(estado), {
       status: 200,
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", "Cache-Control": "no-store" },
     });
   }
 
@@ -44,7 +44,7 @@ export default async (req) => {
 
     return new Response(JSON.stringify(novoEstado), {
       status: 200,
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", "Cache-Control": "no-store" },
     });
   }
 
