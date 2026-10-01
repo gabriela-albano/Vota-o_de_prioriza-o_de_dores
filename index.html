@@ -1,0 +1,541 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Votação de Priorização — CGPI</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Public+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#F3F5F9; --surface:#FFFFFF; --surface-2:#EAEDF4; --surface-3:#DFE3ED;
+    --text:#1E2438; --text-muted:#5A6178; --text-faint:#8991A6;
+    --line:#DCE0EA;
+    --navy:#2A3352; --navy-ink:#1B2140;
+    --gold:#B8860F; --gold-fill:#FBC513; --gold-soft:#FCEBB0;
+    --coral:#B93A2A; --coral-fill:#D54B40; --coral-soft:#F6D6D1;
+    --azul-brand:#2C82CC;
+    --pj:#B96A44; --pf:#2E8484; --ef:#4A5A8C; --cross:#7C5295;
+    --shadow: 0 1px 2px rgba(30,36,56,.06), 0 8px 24px -12px rgba(30,36,56,.18);
+    --radius: 14px;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --bg:#12162A; --surface:#191F38; --surface-2:#212843; --surface-3:#2B3350;
+      --text:#E9EBF4; --text-muted:#AEB4CC; --text-faint:#7D84A0;
+      --line:#333B5C;
+      --navy:#AEBBE8; --navy-ink:#EEF1FB;
+      --gold:#FFD84D; --gold-fill:#FFD84D; --gold-soft:#4A3E12;
+      --coral:#FF8577; --coral-fill:#FF6F5C; --coral-soft:#4A2320;
+      --azul-brand:#6FB3EE;
+      --pj:#E0967A; --pf:#6BC0C0; --ef:#A8B4E0; --cross:#B893DE;
+      --shadow: 0 1px 2px rgba(0,0,0,.3), 0 12px 28px -14px rgba(0,0,0,.55);
+    }
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; background:var(--bg); color:var(--text);
+    font-family:'Public Sans', -apple-system, sans-serif;
+    -webkit-font-smoothing:antialiased;
+  }
+  h1, h2 { font-family:'Fraunces', Georgia, serif; }
+  .mono { font-family:'IBM Plex Mono', monospace; }
+
+  .wrap{ max-width:640px; margin:0 auto; padding:24px 16px 80px; }
+  /* desktop: telas de votação ficam mais largas para reduzir rolagem */
+  @media (min-width: 900px){
+    body[data-modo="triagem"] .wrap{ max-width:1280px; }
+    body[data-modo="completa"] .wrap{ max-width:1160px; }
+  }
+  header.top{ text-align:center; padding:8px 0 12px; }
+  header.top .brand{
+    font-family:'IBM Plex Mono', monospace; font-size:.72rem; letter-spacing:.08em;
+    text-transform:uppercase; color:var(--text-faint); margin-bottom:6px;
+  }
+  header.top h1{ font-size:1.3rem; margin:0 0 4px; font-weight:600; }
+  header.top p{ color:var(--text-muted); font-size:.9rem; margin:0; }
+
+  .progress-wrap{ margin:12px 0 20px; }
+  .progress{ height:6px; background:var(--surface-3); border-radius:999px; overflow:hidden; }
+  .progress > div{ height:100%; background:var(--coral-fill); transition:width .2s ease; }
+  .progress-label{ font-size:.78rem; color:var(--text-muted); text-align:center; margin-top:6px; min-height:1em; }
+
+  .card{
+    background:var(--surface); border:1px solid var(--line); border-radius:var(--radius);
+    padding:20px; margin-bottom:16px; box-shadow:var(--shadow);
+  }
+  .area{
+    display:inline-flex; align-items:center; gap:6px; font-family:'IBM Plex Mono',monospace;
+    font-size:.68rem; font-weight:600; letter-spacing:.04em; text-transform:uppercase;
+    color:var(--areacolor, var(--coral)); background:var(--areabg, var(--coral-soft));
+    padding:3px 8px; border-radius:999px; margin-bottom:10px;
+  }
+  .dor-num{ font-family:'IBM Plex Mono',monospace; font-size:.8rem; font-weight:600; color:var(--text-faint); margin-bottom:6px; }
+  .card h2{ font-size:1.15rem; line-height:1.4; margin:0 0 18px; font-weight:600; }
+
+  .timer-wrap{ display:flex; justify-content:center; margin-bottom:14px; }
+  .timer{
+    font-family:'IBM Plex Mono', monospace; font-weight:600; font-size:1.4rem;
+    color:var(--coral); background:var(--coral-soft); border-radius:999px;
+    padding:6px 18px; min-width:70px; text-align:center;
+  }
+  .timer.acabando{ color:#fff; background:var(--coral); }
+
+  .criterios-grid{ display:grid; grid-template-columns:1fr; gap:18px; }
+  @media (min-width: 900px){
+    .criterios-grid{ grid-template-columns:repeat(3,1fr); gap:16px; }
+    .criterios-grid .criterio{ background:var(--surface-2); border-radius:12px; padding:14px; }
+    .criterios-grid .escala{ grid-template-columns:repeat(2,1fr); }
+  }
+  .criterio .titulo{ font-weight:600; font-size:.95rem; margin-bottom:2px; }
+  .criterio .pergunta{ color:var(--text-muted); font-size:.85rem; margin-bottom:10px; }
+
+  .escala{ display:grid; grid-template-columns:repeat(4,1fr); gap:8px; }
+  .escala label{ position:relative; }
+  .escala input{ position:absolute; opacity:0; width:100%; height:100%; cursor:pointer; }
+  .escala span{
+    display:flex; flex-direction:column; align-items:center; justify-content:center; gap:4px;
+    border:1.5px solid var(--line); border-radius:10px; padding:10px 4px;
+    font-size:.74rem; text-align:center; line-height:1.2; min-height:56px;
+    color:var(--text-muted); transition:all .12s ease; background:var(--surface);
+  }
+  .escala span b{ font-size:.95rem; color:var(--text); }
+  .escala input:checked + span{ border-color:var(--coral); background:var(--coral-soft); color:var(--coral); }
+  .escala input:checked + span b{ color:var(--coral); }
+  .escala input:disabled + span{ opacity:.45; cursor:not-allowed; }
+
+  input[type="text"]{
+    width:100%; font:inherit; padding:13px 14px; border-radius:10px;
+    border:1.5px solid var(--line); margin-bottom:16px; background:var(--surface); color:var(--text);
+  }
+  button{ font:inherit; cursor:pointer; border:none; border-radius:10px; padding:12px 18px; font-weight:600; }
+  button.primary{ background:var(--coral-fill); color:#fff; width:100%; }
+  button.primary:disabled{ opacity:.4; cursor:not-allowed; }
+
+  .hint{ font-size:.82rem; color:var(--text-muted); margin-top:-8px; margin-bottom:18px; }
+
+  /* ---- Triagem (dot voting) ---- */
+  .contador-triagem{
+    position:sticky; top:0; z-index:5; background:var(--bg);
+    padding:10px 0 12px; text-align:center; margin-bottom:6px;
+  }
+  .contador-triagem .num{ font-family:'IBM Plex Mono',monospace; font-weight:700; font-size:1.2rem; }
+  .contador-triagem .num.cheio{ color:var(--coral); }
+  .contador-triagem .aviso{ font-size:.78rem; color:var(--coral); margin-top:2px; min-height:1.1em; }
+  .lista-triagem{ display:grid; grid-template-columns:repeat(auto-fill, minmax(300px, 1fr)); gap:8px; }
+  .item-triagem{
+    display:flex; align-items:flex-start; gap:10px; cursor:pointer; user-select:none;
+    background:var(--surface); border:1.5px solid var(--line); border-radius:12px;
+    padding:12px 14px; transition:all .12s ease;
+  }
+  .item-triagem .marca{
+    flex:none; width:24px; height:24px; border-radius:50%; border:1.5px solid var(--line);
+    display:flex; align-items:center; justify-content:center; font-size:.85rem; color:transparent;
+    background:var(--surface); margin-top:1px;
+  }
+  .item-triagem.selecionada{ border-color:var(--coral); background:var(--coral-soft); }
+  .item-triagem.selecionada .marca{ background:var(--coral-fill); border-color:var(--coral-fill); color:#fff; }
+  .item-triagem .txt{ flex:1; font-size:.9rem; line-height:1.35; }
+  .item-triagem .txt .area-mini{
+    display:block; font-family:'IBM Plex Mono',monospace; font-size:.62rem; font-weight:600;
+    letter-spacing:.04em; text-transform:uppercase; color:var(--areacolor, var(--text-faint)); margin-bottom:3px;
+  }
+  #screen-dor.tempo-esgotado{ pointer-events:none; opacity:.55; }
+  .screen{ display:none; }
+  .screen.active{ display:block; }
+  .center{ text-align:center; padding:50px 16px; }
+  .center .icon{ font-size:2.4rem; margin-bottom:12px; }
+  .center h2{ margin:0 0 8px; }
+  .center p{ color:var(--text-muted); margin:0; }
+  .pulse{ animation:pulse 1.6s ease-in-out infinite; }
+  @keyframes pulse{ 0%,100%{opacity:1;} 50%{opacity:.4;} }
+
+  .salvamento{
+    position:fixed; right:16px; bottom:16px; z-index:10; font-size:.78rem; font-weight:600;
+    padding:6px 12px; border-radius:999px; background:var(--surface); border:1px solid var(--line);
+    color:var(--text-muted); box-shadow:var(--shadow); display:none;
+  }
+  .salvamento.ok{ display:block; color:#3E8A4E; }
+  .salvamento.salvando{ display:block; }
+  .salvamento.erro{ display:block; color:var(--coral); border-color:var(--coral); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <img src="" id="logoCgpi" alt="Logo CGPI" style="height:40px;margin-bottom:10px" />
+    <div class="brand">CGPI · Sefaz-SP</div>
+    <h1>Votação de Priorização de Dores</h1>
+    <p id="subtitulo">Aguarde as instruções do facilitador</p>
+  </header>
+
+  <div class="progress-wrap">
+    <div class="progress"><div id="progressBar" style="width:0%"></div></div>
+    <div class="progress-label" id="progressLabel"></div>
+  </div>
+
+  <!-- TELA 0: nome -->
+  <div class="screen active" id="screen-nome">
+    <div class="card">
+      <h2>Antes de começar, como podemos te identificar?</h2>
+      <input type="text" id="inputNome" placeholder="Seu nome" autocomplete="off" />
+      <div class="hint">Usamos só para saber quem já votou. Não aparece junto das respostas na discussão.</div>
+      <button class="primary" onclick="entrar()">Entrar</button>
+    </div>
+  </div>
+
+  <!-- TELA 1: aguardando início -->
+  <div class="screen" id="screen-aguardando">
+    <div class="center pulse">
+      <div class="icon">⏳</div>
+      <h2>Tudo pronto</h2>
+      <p>Aguarde o facilitador iniciar a votação da primeira dor.</p>
+    </div>
+  </div>
+
+  <!-- TELA 2: dor atual (renderizada via JS) -->
+  <div class="screen" id="screen-dor"></div>
+
+  <!-- TELA 3: fim -->
+  <div class="screen" id="screen-fim">
+    <div class="center">
+      <div class="icon">✅</div>
+      <h2 id="fimTitulo">Rodada encerrada</h2>
+      <p>Obrigado! Se houver uma próxima rodada, ela aparece aqui automaticamente — não feche esta página.</p>
+    </div>
+  </div>
+</div>
+
+<div class="salvamento" id="salvamento"></div>
+
+<script src="dores.js"></script>
+<script>
+let nomeAtual = "";
+let entrouEm = null;
+let respostasLocais = {};     // FONTE DA VERDADE das respostas desta pessoa (enviada inteira a cada mudança)
+let DORES = [];               // dores da rodada completa (as "Ativas")
+let CATALOGO_COMPLETO = [];   // todas as dores do banco (rodada de triagem)
+let modoAtual = null;
+let chaveRenderizada = null;  // "modo|etapa" da tela montada agora
+let renderizando = false;
+let tempoEsgotado = false;
+let countdownInt = null;
+let poll = null;
+
+document.getElementById("logoCgpi").src = LOGO_CGPI;
+
+// ---------- memória local (sobrevive a recarregar a página) ----------
+const LS_KEY = "votacao-cgpi-participante";
+function salvarLocal() {
+  try { localStorage.setItem(LS_KEY, JSON.stringify({ nome: nomeAtual, entrouEm, respostas: respostasLocais })); } catch (e) {}
+}
+function lerLocal() {
+  try { return JSON.parse(localStorage.getItem(LS_KEY) || "null"); } catch (e) { return null; }
+}
+function normalizarNome(n) {
+  return String(n || "").trim().toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/\s+/g, " ");
+}
+(function preencherNome() {
+  const local = lerLocal();
+  if (local && local.nome) document.getElementById("inputNome").value = local.nome;
+})();
+document.getElementById("inputNome").addEventListener("keydown", e => { if (e.key === "Enter") entrar(); });
+
+async function carregarCatalogo() {
+  try {
+    const res = await fetch("/api/catalogo", { cache: "no-store" });
+    const data = await res.json();
+    CATALOGO_COMPLETO = data.dores || [];
+    DORES = CATALOGO_COMPLETO.filter(d => d.selecionada !== false);
+    aplicarCriteriosDoServidor(data.criterios);
+  } catch (e) { /* mantém o que já tinha */ }
+}
+
+async function entrar() {
+  const nome = document.getElementById("inputNome").value.trim();
+  if (!nome) { alert("Digite seu nome para continuar."); return; }
+  nomeAtual = nome;
+
+  // recupera respostas anteriores (se a pessoa recarregou a página)
+  const local = lerLocal();
+  if (local && normalizarNome(local.nome) === normalizarNome(nome)) {
+    respostasLocais = local.respostas || {};
+    entrouEm = local.entrouEm || null;
+  } else {
+    respostasLocais = {};
+  }
+  try {
+    const r = await fetch("/api/vote?nome=" + encodeURIComponent(nome), { cache: "no-store" });
+    const d = await r.json();
+    const reg = d && d.registro;
+    if (reg && reg.respostas) {
+      Object.entries(reg.respostas).forEach(([doreId, crits]) => {
+        if (!respostasLocais[doreId]) respostasLocais[doreId] = {};
+        Object.entries(crits).forEach(([c, v]) => {
+          if (respostasLocais[doreId][c] === undefined) respostasLocais[doreId][c] = v;
+        });
+      });
+      entrouEm = entrouEm || reg.entrouEm;
+    }
+  } catch (e) {}
+  if (!entrouEm) entrouEm = Date.now();
+
+  await carregarCatalogo();
+  enviarRespostas(); // registra presença ("entrou na dinâmica")
+  trocarTela("screen-aguardando");
+  iniciarPolling();
+}
+
+// ---------- envio das respostas: um por vez, sempre o conjunto completo ----------
+let envioEmAndamento = false, envioPendente = false, retryTimer = null;
+function enviarRespostas() {
+  salvarLocal();
+  if (envioEmAndamento) { envioPendente = true; return; }
+  envioEmAndamento = true;
+  envioPendente = false;
+  mostrarSalvamento("salvando");
+  const corpo = JSON.stringify({ nome: nomeAtual, entrouEm, respostas: respostasLocais });
+  fetch("/api/vote", { method: "POST", headers: { "Content-Type": "application/json" }, body: corpo })
+    .then(r => {
+      if (!r.ok) throw new Error("HTTP " + r.status);
+      envioEmAndamento = false;
+      if (envioPendente) enviarRespostas();
+      else mostrarSalvamento("ok");
+    })
+    .catch(() => {
+      envioEmAndamento = false;
+      mostrarSalvamento("erro");
+      clearTimeout(retryTimer);
+      retryTimer = setTimeout(enviarRespostas, 2000);
+    });
+}
+function mostrarSalvamento(estado) {
+  const el = document.getElementById("salvamento");
+  el.className = "salvamento " + estado;
+  el.textContent = estado === "ok" ? "✓ respostas salvas"
+    : estado === "salvando" ? "salvando…"
+    : "sem conexão — tentando de novo…";
+}
+
+function trocarTela(id) {
+  const atual = document.querySelector(".screen.active");
+  if (atual && atual.id === id) return;
+  document.querySelectorAll(".screen").forEach(s => s.classList.remove("active"));
+  document.getElementById(id).classList.add("active");
+  window.scrollTo(0, 0);
+}
+
+function iniciarPolling() {
+  clearInterval(poll);
+  checarEstado();
+  poll = setInterval(checarEstado, 1500);
+}
+
+async function checarEstado() {
+  try {
+    const res = await fetch("/api/estado", { cache: "no-store" });
+    const estado = await res.json();
+    await aplicarEstado(estado);
+  } catch (e) { /* tenta de novo no próximo tick */ }
+}
+
+function definirProgresso(pct, texto) {
+  document.getElementById("progressBar").style.width = Math.max(0, Math.min(100, pct)) + "%";
+  document.getElementById("progressLabel").textContent = texto || "";
+}
+
+async function aplicarEstado(estado) {
+  if (renderizando) return;
+  const modo = estado.modo === "triagem" ? "triagem" : "completa";
+  document.body.dataset.modo = (estado.etapa === -1 || estado.etapa === "fim") ? "" : modo;
+
+  if (estado.etapa === -1) {
+    chaveRenderizada = null; modoAtual = null;
+    clearInterval(countdownInt);
+    document.getElementById("subtitulo").textContent = "Aguarde as instruções do facilitador";
+    definirProgresso(0, "");
+    trocarTela("screen-aguardando");
+    return;
+  }
+  if (estado.etapa === "fim") {
+    chaveRenderizada = null; modoAtual = null;
+    clearInterval(countdownInt);
+    document.getElementById("fimTitulo").textContent =
+      modo === "triagem" ? "Rodada 1 (triagem) encerrada" : "Rodada 2 (priorização) encerrada";
+    definirProgresso(100, "Rodada concluída");
+    trocarTela("screen-fim");
+    return; // continua consultando: a próxima rodada aparece sozinha
+  }
+
+  const chave = modo + "|" + estado.etapa;
+  if (chave !== chaveRenderizada) {
+    renderizando = true;
+    try {
+      await carregarCatalogo(); // pega o corte da triagem e os critérios atualizados
+    } finally {
+      renderizando = false;
+    }
+    modoAtual = modo;
+    chaveRenderizada = chave;
+    if (modo === "triagem") {
+      document.getElementById("subtitulo").textContent = "Rodada 1 · Triagem — marque as dores que devem seguir";
+      renderTelaTriagem();
+    } else {
+      document.getElementById("subtitulo").textContent = "Rodada 2 · Priorização — avalie a dor nos 3 critérios";
+      renderDorAtual(estado.etapa);
+    }
+    trocarTela("screen-dor");
+  }
+  atualizarProgresso(estado);
+  atualizarCronometro(estado);
+}
+
+function atualizarCronometro(estado) {
+  clearInterval(countdownInt);
+  const tick = () => {
+    const decorrido = (Date.now() - estado.iniciadoEm) / 1000;
+    const restante = Math.max(0, Math.ceil(estado.duracaoSeg - decorrido));
+    const el = document.getElementById("timerAtual");
+    if (!el) return;
+    el.textContent = formatarTempo(restante);
+    el.classList.toggle("acabando", restante <= 15);
+    tempoEsgotado = restante <= 0;
+    document.querySelectorAll("#screen-dor input[type=radio]").forEach(i => i.disabled = tempoEsgotado);
+    document.getElementById("screen-dor").classList.toggle("tempo-esgotado", tempoEsgotado);
+    if (restante <= 0) clearInterval(countdownInt);
+  };
+  tick();
+  countdownInt = setInterval(tick, 300);
+}
+
+function formatarTempo(seg) {
+  const m = Math.floor(seg / 60), s = seg % 60;
+  return m + ":" + String(s).padStart(2, "0");
+}
+
+function renderDorAtual(etapa) {
+  const container = document.getElementById("screen-dor");
+  const dor = DORES[etapa];
+  if (!dor) {
+    container.innerHTML = `<div class="center pulse"><div class="icon">⏳</div><h2>Aguarde</h2><p>O facilitador está ajustando a lista de dores.</p></div>`;
+    chaveRenderizada = null; // tenta de novo no próximo tick
+    return;
+  }
+  const jaRespondido = respostasLocais[dor.id] || {};
+  const { cor, bg } = corDaDor(dor);
+
+  let html = `<div class="timer-wrap"><div class="timer" id="timerAtual">--:--</div></div>`;
+  html += `<div class="card">
+    <div class="dor-num">DOR ${etapa + 1} DE ${DORES.length}</div>
+    <span class="area" style="--areacolor:${cor};--areabg:${bg}">${esc(rotuloArea(dor))}</span>
+    <h2>${esc(dor.texto)}</h2>
+    <div class="criterios-grid">`;
+
+  CRITERIOS.forEach((crit, ci) => {
+    html += `<div class="criterio">
+      <div class="titulo">C${ci + 1} · ${esc(crit.titulo)}</div>
+      <div class="pergunta">${esc(crit.pergunta)}</div>
+      <div class="escala">`;
+    crit.escala.forEach((label, i) => {
+      const valor = i + 1;
+      const checked = jaRespondido[crit.id] === valor ? "checked" : "";
+      html += `<label>
+        <input type="radio" name="${dor.id}__${crit.id}" value="${valor}" ${checked}
+          onchange="responder('${dor.id}','${crit.id}',${valor})" />
+        <span><b>${valor}</b>${esc(label)}</span>
+      </label>`;
+    });
+    html += `</div></div>`;
+  });
+  html += `</div></div>`;
+  html += `<p style="text-align:center;color:var(--text-muted);font-size:.82rem">Sua resposta é salva assim que você clica — não precisa apertar nada para confirmar.</p>`;
+  container.innerHTML = html;
+}
+
+// Rodada 1 — triagem (dot voting): todas as dores juntas, cada pessoa marca até ORCAMENTO_VOTOS_TRIAGEM.
+function renderTelaTriagem() {
+  const container = document.getElementById("screen-dor");
+  let html = `<div class="timer-wrap"><div class="timer" id="timerAtual">--:--</div></div>`;
+  html += `<div class="contador-triagem">
+    <div><span class="num" id="contadorTriagemNum">0</span> de ${ORCAMENTO_VOTOS_TRIAGEM} marcadas</div>
+    <div class="aviso" id="avisoTriagem"></div>
+  </div>`;
+  html += `<p style="text-align:center;color:var(--text-muted);font-size:.85rem;margin-top:-4px">
+    Marque até <b>${ORCAMENTO_VOTOS_TRIAGEM}</b> dores que você acha que merecem entrar na rodada de priorização.
+  </p>`;
+  html += `<div class="lista-triagem">`;
+  CATALOGO_COMPLETO.forEach((dor, i) => {
+    const { cor } = corDaDor(dor);
+    const sel = !!(respostasLocais[dor.id] && respostasLocais[dor.id][TRIAGEM_CRITERIO_ID] === 1);
+    html += `<div class="item-triagem${sel ? " selecionada" : ""}" id="triagem-${dor.id}" onclick="alternarTriagem('${dor.id}')">
+      <div class="marca">✓</div>
+      <div class="txt"><span class="area-mini" style="--areacolor:${cor}">${i + 1} · ${esc(rotuloArea(dor))}</span>${esc(dor.texto)}</div>
+    </div>`;
+  });
+  html += `</div>`;
+  container.innerHTML = html;
+  atualizarContadorTriagem();
+}
+
+function contarSelecionadasTriagem() {
+  // só conta dores que existem no banco atual
+  return CATALOGO_COMPLETO.filter(d => respostasLocais[d.id] && respostasLocais[d.id][TRIAGEM_CRITERIO_ID] === 1).length;
+}
+
+function atualizarContadorTriagem() {
+  const total = contarSelecionadasTriagem();
+  const numEl = document.getElementById("contadorTriagemNum");
+  const avisoEl = document.getElementById("avisoTriagem");
+  if (!numEl) return;
+  numEl.textContent = total;
+  const cheio = total >= ORCAMENTO_VOTOS_TRIAGEM;
+  numEl.classList.toggle("cheio", cheio);
+  if (avisoEl) avisoEl.textContent = cheio ? "Limite atingido — desmarque uma para trocar por outra." : "";
+}
+
+function alternarTriagem(doreId) {
+  if (tempoEsgotado) return;
+  const jaSel = !!(respostasLocais[doreId] && respostasLocais[doreId][TRIAGEM_CRITERIO_ID] === 1);
+  if (!jaSel && contarSelecionadasTriagem() >= ORCAMENTO_VOTOS_TRIAGEM) {
+    const avisoEl = document.getElementById("avisoTriagem");
+    if (avisoEl) avisoEl.textContent = "Limite atingido — desmarque uma para trocar por outra.";
+    return;
+  }
+  if (!respostasLocais[doreId]) respostasLocais[doreId] = {};
+  const novo = jaSel ? 0 : 1;
+  respostasLocais[doreId][TRIAGEM_CRITERIO_ID] = novo;
+  const el = document.getElementById("triagem-" + doreId);
+  if (el) el.classList.toggle("selecionada", novo === 1);
+  atualizarContadorTriagem();
+  atualizarProgresso();
+  enviarRespostas();
+}
+
+function responder(doreId, critId, valor) {
+  if (tempoEsgotado) return;
+  if (!respostasLocais[doreId]) respostasLocais[doreId] = {};
+  respostasLocais[doreId][critId] = valor;
+  atualizarProgresso();
+  enviarRespostas();
+}
+
+// Barra de progresso POR RODADA.
+let ultimoEstado = null;
+function atualizarProgresso(estado) {
+  if (estado) ultimoEstado = estado;
+  const e = ultimoEstado;
+  if (!e || modoAtual === null) return;
+  if (modoAtual === "triagem") {
+    const n = contarSelecionadasTriagem();
+    definirProgresso((n / ORCAMENTO_VOTOS_TRIAGEM) * 100, `Rodada 1 · ${n} de ${ORCAMENTO_VOTOS_TRIAGEM} marcações usadas`);
+    return;
+  }
+  const etapa = Number(e.etapa);
+  const dor = DORES[etapa];
+  const respondidos = dor ? CRITERIOS.filter(c => respostasLocais[dor.id] && respostasLocais[dor.id][c.id]).length : 0;
+  definirProgresso(DORES.length ? ((etapa + 1) / DORES.length) * 100 : 0,
+    `Rodada 2 · dor ${etapa + 1} de ${DORES.length} · você respondeu ${respondidos} de ${CRITERIOS.length} critérios desta dor`);
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,921 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Painel de Apuração — CGPI</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Public+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#F3F5F9; --surface:#FFFFFF; --surface-2:#EAEDF4; --surface-3:#DFE3ED;
+    --text:#1E2438; --text-muted:#5A6178; --text-faint:#8991A6;
+    --line:#DCE0EA;
+    --navy:#2A3352; --navy-ink:#1B2140;
+    --gold:#B8860F; --gold-fill:#FBC513; --gold-soft:#FCEBB0;
+    --coral:#B93A2A; --coral-fill:#D54B40; --coral-soft:#F6D6D1;
+    --azul-brand:#2C82CC;
+    --ok:#3E8A4E; --ok-bg:#E1F1E4;
+    --pj:#B96A44; --pf:#2E8484; --ef:#4A5A8C; --cross:#7C5295;
+    --shadow: 0 1px 2px rgba(30,36,56,.06), 0 8px 24px -12px rgba(30,36,56,.18);
+    --radius: 14px;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --bg:#12162A; --surface:#191F38; --surface-2:#212843; --surface-3:#2B3350;
+      --text:#E9EBF4; --text-muted:#AEB4CC; --text-faint:#7D84A0;
+      --line:#333B5C;
+      --navy:#AEBBE8; --navy-ink:#EEF1FB;
+      --gold:#FFD84D; --gold-fill:#FFD84D; --gold-soft:#4A3E12;
+      --coral:#FF8577; --coral-fill:#FF6F5C; --coral-soft:#4A2320;
+      --azul-brand:#6FB3EE;
+      --ok:#8FDB9E; --ok-bg:#1E3A24;
+      --pj:#E0967A; --pf:#6BC0C0; --ef:#A8B4E0; --cross:#B893DE;
+      --shadow: 0 1px 2px rgba(0,0,0,.3), 0 12px 28px -14px rgba(0,0,0,.55);
+    }
+  }
+  *{box-sizing:border-box;}
+  body{ margin:0; background:var(--bg); color:var(--text); font-family:'Public Sans', -apple-system, sans-serif; }
+  h1,h2,h3{ font-family:'Fraunces', Georgia, serif; }
+  .mono{ font-family:'IBM Plex Mono', monospace; }
+  .wrap{ max-width:1280px; margin:0 auto; padding:24px 16px 80px; }
+
+  header{ display:flex; justify-content:space-between; align-items:baseline; flex-wrap:wrap; gap:8px; margin-bottom:6px; }
+  header .brand{ font-family:'IBM Plex Mono',monospace; font-size:.7rem; letter-spacing:.08em; text-transform:uppercase; color:var(--text-faint); }
+  header h1{ font-size:1.3rem; margin:4px 0 0; font-weight:600; }
+  .status{ font-size:.82rem; color:var(--text-muted); margin-bottom:20px; }
+
+  .panel{
+    background:var(--surface); border:1px solid var(--line); border-radius:var(--radius);
+    padding:18px 20px; margin-bottom:20px; box-shadow:var(--shadow);
+  }
+  .panel h3{ margin:0 0 12px; font-size:1rem; font-weight:600; }
+
+  .controle-topo{ display:flex; flex-wrap:wrap; gap:14px; align-items:center; margin-bottom:14px; }
+  .controle-topo label{ font-size:.85rem; color:var(--text-muted); display:flex; align-items:center; gap:6px; }
+  .controle-topo input[type="number"]{ width:70px; padding:6px 8px; border-radius:8px; border:1.5px solid var(--line); font:inherit; background:var(--surface); color:var(--text); }
+
+  .dor-atual{ background:var(--surface-2); border-radius:10px; padding:14px 16px; margin-bottom:14px; }
+  .dor-atual .rotulo{ font-size:.72rem; text-transform:uppercase; letter-spacing:.04em; color:var(--text-faint); margin-bottom:4px; }
+  .dor-atual .texto{ font-weight:600; font-size:1rem; }
+  .dor-atual .timer{ font-family:'IBM Plex Mono',monospace; font-size:1.3rem; font-weight:700; color:var(--coral); float:right; }
+
+  .botoes{ display:flex; gap:10px; flex-wrap:wrap; }
+  button{ font:inherit; cursor:pointer; border:none; border-radius:8px; padding:10px 16px; font-weight:600; }
+  button.primary{ background:var(--coral-fill); color:#fff; }
+  button.ghost{ background:transparent; border:1.5px solid var(--line); color:var(--text-muted); }
+  button.danger{ background:var(--coral-soft); color:var(--coral); }
+  button:disabled{ opacity:.4; cursor:not-allowed; }
+
+  table{ width:100%; border-collapse:collapse; background:var(--surface); border-radius:12px; overflow:hidden; }
+  thead th{ text-align:left; font-size:.68rem; text-transform:uppercase; letter-spacing:.04em; color:var(--text-faint); padding:10px 12px; border-bottom:1px solid var(--line); }
+  tbody td{ padding:12px; border-bottom:1px solid var(--line); font-size:.88rem; vertical-align:top; }
+  tbody tr:last-child td{ border-bottom:none; }
+  .dor-texto{ max-width:320px; }
+  .area-tag{
+    display:inline-block; font-family:'IBM Plex Mono',monospace; font-size:.64rem; font-weight:600; text-transform:uppercase;
+    color:var(--areacolor); background:var(--areabg); padding:2px 7px; border-radius:999px; margin-bottom:4px;
+  }
+  .criterio-cell{ text-align:center; }
+  .moda{ font-size:1.05rem; font-weight:700; }
+  .moda.empate{ color:var(--gold); }
+  .dist{ font-size:.66rem; color:var(--text-muted); margin-top:2px; }
+  .score{ font-weight:700; font-size:1rem; }
+  .score.alto{ color:var(--ok); }
+  .transversal-badge{ font-size:.62rem; background:var(--surface-2); color:var(--cross); padding:1px 6px; border-radius:6px; margin-left:6px; }
+  .votos-count{ font-size:.8rem; color:var(--text-muted); }
+
+  .lock-screen{ max-width:360px; margin:80px auto; text-align:center; }
+  .lock-screen input{ width:100%; padding:12px; border-radius:10px; border:1.5px solid var(--line); font:inherit; margin-bottom:12px; background:var(--surface); color:var(--text); }
+  .lock-screen button{ width:100%; background:var(--coral-fill); color:#fff; padding:12px; }
+  .hidden{ display:none; }
+
+  .legenda{ display:flex; gap:16px; flex-wrap:wrap; font-size:.78rem; color:var(--text-muted); margin-top:10px; }
+  .legenda span{ display:inline-flex; align-items:center; gap:5px; }
+  .legenda i{ width:9px; height:9px; border-radius:50%; display:inline-block; }
+
+  .export-bar{ display:flex; gap:10px; flex-wrap:wrap; margin-bottom:16px; }
+  button.export{ background:var(--navy); color:#fff; }
+  .print-only{ display:none; }
+
+  @media print {
+    body{ background:#fff; }
+    .no-print{ display:none !important; }
+    .print-only{ display:block; }
+    .panel{ box-shadow:none; border:1px solid #ccc; break-inside:avoid; }
+    tbody tr{ break-inside:avoid; }
+    .wrap{ max-width:100%; padding:0; }
+    #heatmap svg{ max-width:100% !important; }
+  }
+
+  .nota{ color:var(--text-muted); font-size:.82rem; margin:-6px 0 10px; }
+  select{ padding:6px 8px; border-radius:8px; border:1.5px solid var(--line); font:inherit; background:var(--surface); color:var(--text); }
+  .campo{ width:100%; font:inherit; font-size:.88rem; padding:6px 8px; border-radius:8px; border:1.5px solid var(--line); background:var(--surface); color:var(--text); }
+  .contagem{ display:flex; flex-wrap:wrap; gap:12px; align-items:stretch; margin-bottom:14px; }
+  .kpi{ background:var(--surface-2); border-radius:10px; padding:10px 14px; min-width:150px; display:flex; flex-direction:column; }
+  .kpi-num{ font-family:'IBM Plex Mono',monospace; font-size:1.5rem; font-weight:700; }
+  .kpi-lbl{ font-size:.76rem; color:var(--text-muted); }
+  .kpi-lista{ flex:1 1 260px; font-size:.8rem; color:var(--text-muted); align-self:center; }
+  .crit-editor{ display:grid; grid-template-columns:repeat(auto-fit, minmax(300px,1fr)); gap:14px; }
+  .crit-bloco{ background:var(--surface-2); border-radius:12px; padding:14px; display:flex; flex-direction:column; gap:4px; }
+  .crit-cab{ font-family:'IBM Plex Mono',monospace; font-weight:700; display:flex; justify-content:space-between; align-items:baseline; }
+  .lbl{ font-size:.72rem; text-transform:uppercase; letter-spacing:.04em; color:var(--text-faint); margin-top:6px; }
+  .escala-edit{ display:grid; grid-template-columns:1fr 1fr; gap:6px; }
+  .escala-edit div{ display:flex; align-items:center; gap:6px; }
+  .explica{ background:var(--surface-2); border-radius:10px; padding:12px 14px; font-size:.82rem; line-height:1.55; color:var(--text-muted); margin-bottom:14px; }
+  .explica b{ color:var(--text); }
+  table.mini{ width:auto; margin:4px auto 0; border-collapse:collapse; background:transparent; border-radius:0; }
+  table.mini td{ padding:0 4px; border:none; font-size:.64rem; color:var(--text-faint); text-align:center; font-family:'IBM Plex Mono',monospace; }
+  table.mini tr:first-child td{ border-bottom:1px solid var(--line); }
+  table.mini td.tem{ color:var(--text); font-weight:700; }
+  tr.fora-corte td{ opacity:.5; }
+  td.linha-corte{ text-align:center; font-family:'IBM Plex Mono',monospace; font-size:.72rem; color:var(--coral); background:var(--coral-soft); padding:4px; }
+  td.vazio{ color:var(--text-muted); }
+</style>
+</head>
+<body>
+
+<div class="wrap hidden" id="painel">
+  <header>
+    <div style="display:flex;align-items:center;gap:12px">
+      <img src="" id="logoCgpi" alt="Logo CGPI" style="height:38px" />
+      <div>
+        <div class="brand">CGPI · Sefaz-SP</div>
+        <h1>Painel de Apuração — Votação de Priorização</h1>
+      </div>
+    </div>
+  </header>
+  <div class="status no-print" id="status">Carregando…</div>
+
+  <!-- Cabeçalho só para o PDF/impressão -->
+  <div class="print-only" style="margin-bottom:20px;padding-bottom:10px;border-bottom:2px solid #1E2438">
+    <div style="font-family:'IBM Plex Mono',monospace;font-size:.7rem;letter-spacing:.08em;text-transform:uppercase;color:#5A6178">CGPI · Sefaz-SP</div>
+    <div style="font-family:'Fraunces',Georgia,serif;font-size:1.3rem;font-weight:600">Votação de Priorização de Dores — Relatório</div>
+    <div id="printMeta" style="font-size:.85rem;color:#5A6178;margin-top:4px"></div>
+  </div>
+
+  <!-- CONTROLE DO MODO GUIADO -->
+  <div class="panel no-print">
+    <h3>Controle da votação</h3>
+    <p class="nota">
+      <b>Rodada 1 · Triagem</b> (dot voting — todas as dores numa tela, cada pessoa marca até 9) → você aplica o corte → <b>Rodada 2 · Priorização</b> (3 critérios, uma dor por vez, só nas dores "Ativas").
+    </p>
+    <div class="controle-topo">
+      <label>Rodada:
+        <select id="modoSelect" onchange="mudarModo()">
+          <option value="triagem">Rodada 1 · Triagem (dot voting)</option>
+          <option value="completa" selected>Rodada 2 · Priorização (3 critérios)</option>
+        </select>
+      </label>
+      <label id="duracaoLabel"><span id="duracaoTxt">Duração por dor (seg):</span> <input type="number" id="duracaoInput" value="120" min="10" step="5" /></label>
+      <button class="ghost" onclick="atualizarTudo()">Atualizar painel agora</button>
+    </div>
+
+    <div class="dor-atual" id="dorAtualBox">
+      <div class="rotulo">Nenhuma votação em andamento</div>
+      <div class="texto">—</div>
+    </div>
+
+    <div class="contagem" id="contagemBox">
+      <div class="kpi"><span class="kpi-num" id="kpiEntraram">0</span><span class="kpi-lbl">entraram na dinâmica</span></div>
+      <div class="kpi"><span class="kpi-num" id="kpiResponderam">—</span><span class="kpi-lbl" id="kpiResponderamLbl">responderam a etapa atual</span></div>
+      <div class="kpi"><span class="kpi-num" id="kpiFaltam">—</span><span class="kpi-lbl">faltam</span></div>
+      <div class="kpi-lista" id="kpiFaltamNomes"></div>
+    </div>
+
+    <div class="botoes">
+      <button class="primary" onclick="iniciar()">▶ Iniciar rodada</button>
+      <button class="primary" id="btnProxima" onclick="proxima()">⏭ Próxima dor</button>
+      <button class="ghost" onclick="estender()">+30s</button>
+      <button class="danger" onclick="encerrar()">■ Encerrar rodada</button>
+      <button class="ghost" onclick="reiniciarEtapas()">↺ Voltar para "aguardando"</button>
+      <button class="danger" onclick="resetarVotos()">🗑 Zerar TODOS os votos (só antes do dia real)</button>
+    </div>
+  </div>
+
+  <!-- CRITÉRIOS (editáveis) -->
+  <div class="panel no-print">
+    <h3>Critérios de avaliação (Rodada 2) — editáveis</h3>
+    <p class="nota">
+      O que estiver aqui é o que os participantes veem. Edite e clique em "💾 Salvar critérios". Quem já está numa dor vê o texto novo a partir da próxima dor. Os pesos (×3, ×2, ×1) são fixos, para o score ser comparável com as outras análises da CGPI.
+    </p>
+    <div class="crit-editor" id="critEditor"></div>
+    <div class="controle-topo" style="margin-top:12px;margin-bottom:0">
+      <button class="primary" onclick="salvarCriterios()">💾 Salvar critérios</button>
+      <span id="critStatus" class="nota" style="margin:0"></span>
+    </div>
+  </div>
+
+  <!-- RESULTADOS DA TRIAGEM -->
+  <div class="panel no-print">
+    <h3>Resultados da Rodada 1 · Triagem</h3>
+    <p class="nota">
+      <b>Pontos = marcações × peso de transversalidade</b>: dor de 1 processo ×1,0 · dor em 2 processos (PJ/PF/EF) ×1,2 · dor nos 3 processos ×1,3. Ex.: 3 marcações numa dor PF+EF = 3 × 1,2 = 3,6 pontos. O ranking e o corte usam os pontos; as marcações aparecem ao lado para transparência.
+    </p>
+    <div class="controle-topo" style="margin-top:6px">
+      <label>Manter as top <input type="number" id="topNInput" value="12" min="1" style="width:60px" /> dores</label>
+      <button class="ghost" onclick="aplicarCorteTriagem()">Aplicar corte à seleção (depois clique em Salvar em "Gerenciar dores")</button>
+    </div>
+    <table>
+      <thead>
+        <tr><th style="width:50px">Pos.</th><th>Dor</th><th class="criterio-cell">Marcações</th><th class="criterio-cell">Peso</th><th class="criterio-cell">Pontos</th></tr>
+      </thead>
+      <tbody id="triagemBody"><tr><td colspan="5" class="vazio">Ainda sem votos de triagem.</td></tr></tbody>
+    </table>
+  </div>
+
+  <!-- GERENCIAR DORES (banco editável) -->
+  <div class="panel no-print">
+    <h3>Gerenciar dores (banco editável)</h3>
+    <p class="nota">
+      "Ativa" = entra na Rodada 2 (na ordem desta lista — é essa ordem que numera as dores). Os processos marcados definem o peso (1 processo ×1,0 · 2 processos ×1,2 · 3 processos ×1,3). Nada vale até clicar em "💾 Salvar alterações".
+    </p>
+    <div class="controle-topo" style="margin-top:10px">
+      <button class="ghost" onclick="selecionarTodas(true)">☑ Selecionar todas</button>
+      <button class="ghost" onclick="selecionarTodas(false)">☐ Desmarcar todas</button>
+      <button class="ghost" onclick="adicionarDor()">➕ Adicionar dor</button>
+      <button class="primary" onclick="salvarCatalogo()">💾 Salvar alterações</button>
+      <span id="catalogoStatus" class="nota" style="margin:0"></span>
+    </div>
+    <div style="overflow-x:auto">
+      <table>
+        <thead>
+          <tr>
+            <th style="width:44px">Ativa</th>
+            <th style="width:44px">Nº R2</th>
+            <th style="width:130px">Área (rótulo livre)</th>
+            <th>Texto da dor</th>
+            <th style="width:150px">Processos → peso</th>
+            <th style="width:40px"></th>
+          </tr>
+        </thead>
+        <tbody id="catalogoBody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- RESULTADOS -->
+  <div class="panel">
+    <div class="export-bar no-print">
+      <button class="export" onclick="exportarPDF()">📄 Baixar relatório em PDF</button>
+      <button class="export" onclick="exportarHeatmapPNG()">🖼️ Baixar mapa de calor (PNG)</button>
+      <label class="nota" style="margin:0;display:flex;align-items:center;gap:6px">Em empate na moda, usar:
+        <select id="regraEmpate" onchange="atualizarTudo()">
+          <option value="menor" selected>a menor nota (conservador)</option>
+          <option value="maior">a maior nota</option>
+          <option value="media">a média das notas empatadas</option>
+        </select>
+      </label>
+    </div>
+    <h3>Resultados da Rodada 2 · Priorização</h3>
+    <div class="explica">
+      <b>Como o score é calculado.</b> Para cada critério vale a <b>moda</b> — a nota que mais pessoas deram.
+      Score base = (moda C1 × 3) + (moda C2 × 2) + (moda C3 × 1) → vai de 6 a 24.
+      Score final = score base × peso de transversalidade (×1,0 · ×1,2 · ×1,3).
+      <br/><b>Asterisco (*)</b> = empate na moda (ex.: com 2 pessoas, uma deu 3 e outra deu 4). O número mostrado segue a regra de empate escolhida acima.
+      <br/><b>Mini-tabela embaixo de cada nota</b> = quantas pessoas deram cada nota de 1 a 4 (os zeros só indicam que ninguém escolheu aquela nota — não são votos perdidos).
+      <br/><b>Votos</b> = quantas pessoas responderam os 3 critérios da dor, de quantas entraram. Se faltar voto em algum critério, o score aparece como "incompleto" em vez de ser calculado.
+    </div>
+    <div style="overflow-x:auto">
+    <table>
+      <thead id="theadResultados"></thead>
+      <tbody id="tbody"></tbody>
+    </table>
+    </div>
+  </div>
+
+  <!-- MAPA DE CALOR -->
+  <div class="panel">
+    <h3>Mapa de calor (prévia)</h3>
+    <p class="nota">
+      Vertical = score final · horizontal = potencial de automação (moda de C3). As linhas de corte ficam no meio de cada escala (score 15 = meio de 6–24; C3 = 2,5) — são referência para a conversa ao vivo, não confirmei se são os mesmos limiares da Ferramenta de Priorização oficial. Cada bolinha traz o nº da dor (o mesmo da tabela acima), e a legenda embaixo diz qual é. Bolinhas no mesmo ponto ficam lado a lado.
+    </p>
+    <div id="heatmap" style="margin-top:10px"></div>
+  </div>
+</div>
+
+<div class="lock-screen" id="lock">
+  <h2>Painel de Apuração</h2>
+  <p style="color:var(--text-muted);font-size:.9rem">Acesso restrito ao facilitador.</p>
+  <input type="password" id="pin" placeholder="PIN" onkeydown="if(event.key==='Enter')checarPin()" />
+  <button onclick="checarPin()">Entrar</button>
+</div>
+
+<script src="dores.js"></script>
+<script>
+let estadoAtual = { etapa: -1, duracaoSeg: 120, iniciadoEm: null, modo: "completa" };
+let tickInt = null;
+let CATALOGO = []; // todas as dores do banco (inclusive desmarcadas)
+let DORES = [];    // só as "Ativas" — Rodada 2, nesta ordem (define o nº de cada dor)
+let ultimosVotos = [];
+let ultimasLinhas = [];
+
+document.getElementById("logoCgpi").src = LOGO_CGPI;
+
+function checarPin() {
+  const pin = document.getElementById("pin").value;
+  if (pin === ADMIN_PIN) {
+    document.getElementById("lock").classList.add("hidden");
+    document.getElementById("painel").classList.remove("hidden");
+    document.getElementById("duracaoInput").value = DURACAO_PADRAO_SEG;
+    atualizarControlesModo();
+    carregarCatalogo().then(() => { carregar(); carregarEstado(); });
+    setInterval(carregar, 3000);
+    setInterval(carregarEstado, 2000);
+  } else {
+    alert("PIN incorreto.");
+  }
+}
+
+function atualizarTudo() { carregar(); carregarEstado(); }
+
+function mudarModo() {
+  const modo = document.getElementById("modoSelect").value;
+  document.getElementById("duracaoInput").value = modo === "triagem" ? DURACAO_TRIAGEM_PADRAO_SEG : DURACAO_PADRAO_SEG;
+  atualizarControlesModo();
+}
+function atualizarControlesModo() {
+  const ehTriagem = document.getElementById("modoSelect").value === "triagem";
+  document.getElementById("btnProxima").style.display = ehTriagem ? "none" : "";
+  document.getElementById("duracaoTxt").textContent = ehTriagem ? "Duração da rodada (seg):" : "Duração por dor (seg):";
+}
+
+// ---------- banco de dores + critérios ----------
+
+async function carregarCatalogo() {
+  try {
+    const res = await fetch("/api/catalogo", { cache: "no-store" });
+    const data = await res.json();
+    CATALOGO = data.dores || [];
+    DORES = CATALOGO.filter(d => d.selecionada !== false);
+    aplicarCriteriosDoServidor(data.criterios);
+    renderCatalogo();
+    renderEditorCriterios();
+  } catch (e) {
+    document.getElementById("catalogoStatus").textContent = "Erro ao carregar o banco de dores.";
+  }
+}
+
+function statusCatalogo(extra) {
+  document.getElementById("catalogoStatus").textContent =
+    CATALOGO.filter(d => d.selecionada !== false).length + " de " + CATALOGO.length + " dores ativas" + (extra || "");
+}
+
+function renderCatalogo() {
+  let nR2 = 0;
+  document.getElementById("catalogoBody").innerHTML = CATALOGO.map((d, i) => {
+    const ativa = d.selecionada !== false;
+    const num = ativa ? ++nR2 : "";
+    const ps = processosDaDor(d);
+    const mult = multiplicadorProcessos(ps.length);
+    return `
+    <tr>
+      <td style="text-align:center"><input type="checkbox" ${ativa ? "checked" : ""} onchange="editarCampo(${i},'selecionada',this.checked)" /></td>
+      <td class="mono" style="text-align:center">${num}</td>
+      <td><input type="text" class="campo" value="${esc(d.area)}" onchange="editarCampo(${i},'area',this.value)" /></td>
+      <td><textarea class="campo" style="min-height:40px;resize:vertical" onchange="editarCampo(${i},'texto',this.value)">${esc(d.texto)}</textarea></td>
+      <td style="white-space:nowrap">
+        ${PROCESSOS_VALIDOS.map(p => `<label style="display:inline-flex;align-items:center;gap:2px;font-size:.74rem;margin-right:6px">
+          <input type="checkbox" ${ps.includes(p) ? "checked" : ""} onchange="toggleProcesso(${i},'${p}',this.checked)" />${p}</label>`).join("")}
+        <div class="nota" style="margin:2px 0 0">${formatarMult(mult)}</div>
+      </td>
+      <td style="text-align:center"><button class="danger" style="padding:6px 10px" onclick="removerDor(${i})" title="Remover">🗑</button></td>
+    </tr>`;
+  }).join("");
+  statusCatalogo();
+}
+
+function toggleProcesso(i, processo, marcado) {
+  const atuais = new Set(processosDaDor(CATALOGO[i]));
+  if (marcado) atuais.add(processo); else atuais.delete(processo);
+  CATALOGO[i].processos = PROCESSOS_VALIDOS.filter(p => atuais.has(p));
+  renderCatalogo();
+  statusCatalogo(" — lembre de Salvar");
+}
+
+function editarCampo(i, campo, valor) {
+  CATALOGO[i][campo] = valor;
+  if (campo === "selecionada") { renderCatalogo(); statusCatalogo(" — lembre de Salvar"); }
+}
+
+function selecionarTodas(valor) {
+  CATALOGO.forEach(d => d.selecionada = valor);
+  renderCatalogo();
+  statusCatalogo(" — lembre de Salvar");
+}
+
+function adicionarDor() {
+  CATALOGO.push({ id: "dor-nova-" + Date.now(), area: "", texto: "", processos: [], selecionada: true });
+  renderCatalogo();
+  document.getElementById("catalogoBody").lastElementChild.scrollIntoView({ behavior: "smooth", block: "center" });
+}
+
+function removerDor(i) {
+  if (!confirm("Remover esta dor do banco? Os votos já registrados não são apagados, mas ela some da lista e das próximas rodadas.")) return;
+  CATALOGO.splice(i, 1);
+  renderCatalogo();
+  statusCatalogo(" — lembre de Salvar");
+}
+
+async function salvarCatalogo() {
+  const dores = CATALOGO.filter(d => (d.texto || "").trim().length > 0);
+  try {
+    const res = await fetch("/api/catalogo", {
+      method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ dores }),
+    });
+    if (!res.ok) throw new Error();
+    const data = await res.json();
+    CATALOGO = data.dores || dores;
+    DORES = CATALOGO.filter(d => d.selecionada !== false);
+    renderCatalogo();
+    statusCatalogo(" · salvo ✅");
+    carregar();
+  } catch (e) {
+    document.getElementById("catalogoStatus").textContent = "Erro ao salvar. Tente de novo.";
+  }
+}
+
+function renderEditorCriterios() {
+  document.getElementById("critEditor").innerHTML = CRITERIOS.map((c, ci) => `
+    <div class="crit-bloco">
+      <div class="crit-cab">C${ci + 1} <span class="nota" style="margin:0">peso ×${c.peso}</span></div>
+      <label class="lbl">Título</label>
+      <input type="text" class="campo" id="crit-${c.id}-titulo" value="${esc(c.titulo)}" />
+      <label class="lbl">Pergunta / explicação</label>
+      <textarea class="campo" id="crit-${c.id}-pergunta" style="min-height:64px;resize:vertical">${esc(c.pergunta)}</textarea>
+      <label class="lbl">Legendas da escala (1 a 4)</label>
+      <div class="escala-edit">
+        ${c.escala.map((e, i) => `<div><span class="mono">${i + 1}</span><input type="text" class="campo" id="crit-${c.id}-e${i}" value="${esc(e)}" /></div>`).join("")}
+      </div>
+    </div>`).join("");
+}
+
+async function salvarCriterios() {
+  const criterios = CRITERIOS.map(c => ({
+    id: c.id,
+    titulo: document.getElementById(`crit-${c.id}-titulo`).value.trim(),
+    pergunta: document.getElementById(`crit-${c.id}-pergunta`).value.trim(),
+    escala: [0, 1, 2, 3].map(i => document.getElementById(`crit-${c.id}-e${i}`).value.trim()),
+  }));
+  const st = document.getElementById("critStatus");
+  try {
+    const res = await fetch("/api/catalogo", {
+      method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ criterios }),
+    });
+    if (!res.ok) throw new Error();
+    const data = await res.json();
+    aplicarCriteriosDoServidor(data.criterios);
+    renderEditorCriterios();
+    renderTabela(ultimosVotos);
+    renderHeatmap();
+    st.textContent = "Critérios salvos ✅ " + new Date().toLocaleTimeString("pt-BR");
+  } catch (e) {
+    st.textContent = "Erro ao salvar os critérios. Tente de novo.";
+  }
+}
+
+// ---------- controle de etapas ----------
+
+async function carregarEstado() {
+  try {
+    const res = await fetch("/api/estado", { cache: "no-store" });
+    estadoAtual = await res.json();
+    renderEstado();
+    renderContagem();
+  } catch (e) {}
+}
+
+function renderEstado() {
+  const box = document.getElementById("dorAtualBox");
+  clearInterval(tickInt);
+  const rotuloModo = estadoAtual.modo === "triagem" ? "Rodada 1 · Triagem" : "Rodada 2 · Priorização";
+
+  if (estadoAtual.etapa === -1) {
+    box.innerHTML = `<div class="rotulo">Nenhuma rodada em andamento — participantes estão na tela "aguardando"</div><div class="texto">—</div>`;
+    return;
+  }
+  if (estadoAtual.etapa === "fim") {
+    box.innerHTML = `<div class="rotulo">${rotuloModo} encerrada</div><div class="texto">Participantes veem "rodada encerrada" e continuam conectados — a próxima rodada aparece para eles automaticamente.</div>`;
+    return;
+  }
+  let texto, rotulo;
+  if (estadoAtual.modo === "triagem") {
+    rotulo = `${rotuloModo} em andamento`;
+    texto = `Todo mundo está marcando até ${ORCAMENTO_VOTOS_TRIAGEM} dores na própria tela.`;
+  } else {
+    const dor = DORES[estadoAtual.etapa];
+    if (!dor) {
+      box.innerHTML = `<div class="rotulo">${rotuloModo}</div><div class="texto">Etapa inválida (a lista de dores mudou). Clique em "Voltar para aguardando" e inicie de novo.</div>`;
+      return;
+    }
+    rotulo = `${rotuloModo} · dor ${estadoAtual.etapa + 1} de ${DORES.length} · ${esc(rotuloArea(dor))}`;
+    texto = esc(dor.texto);
+  }
+  const tick = () => {
+    const restante = Math.max(0, Math.ceil(estadoAtual.duracaoSeg - (Date.now() - estadoAtual.iniciadoEm) / 1000));
+    box.innerHTML = `<div class="timer">${formatarTempo(restante)}</div><div class="rotulo">${rotulo}</div><div class="texto">${texto}</div>`;
+  };
+  tick();
+  tickInt = setInterval(tick, 500);
+}
+
+function formatarTempo(seg) {
+  const m = Math.floor(seg / 60), s = seg % 60;
+  return m + ":" + String(s).padStart(2, "0");
+}
+
+async function enviarEstado(etapa, modoForcado) {
+  const modo = modoForcado || document.getElementById("modoSelect").value;
+  const duracaoSeg = Number(document.getElementById("duracaoInput").value) ||
+    (modo === "triagem" ? DURACAO_TRIAGEM_PADRAO_SEG : DURACAO_PADRAO_SEG);
+  await fetch("/api/estado", {
+    method: "POST", headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ etapa, duracaoSeg, modo }),
+  });
+  carregarEstado();
+}
+
+async function iniciar() {
+  const modo = document.getElementById("modoSelect").value;
+  await carregarCatalogo(); // garante a lista salva mais recente (corte da triagem)
+  if (modo === "completa" && DORES.length === 0) { alert("Nenhuma dor ativa. Marque as dores em 'Gerenciar dores' e salve."); return; }
+  enviarEstado(0, modo);
+}
+function proxima() {
+  const modo = document.getElementById("modoSelect").value;
+  const mesmoModo = estadoAtual.modo === modo;
+  const prox = (!mesmoModo || estadoAtual.etapa === -1 || estadoAtual.etapa === "fim") ? 0 : estadoAtual.etapa + 1;
+  const lista = modo === "triagem" ? CATALOGO : DORES;
+  enviarEstado(prox >= lista.length ? "fim" : prox, modo);
+}
+function encerrar() {
+  if (confirm("Encerrar a rodada agora? Os participantes verão 'rodada encerrada' (e continuam conectados para a próxima).")) enviarEstado("fim", estadoAtual.modo);
+}
+function reiniciarEtapas() {
+  if (confirm("Volta todos para a tela 'aguardando' (os votos NÃO são apagados). Confirmar?")) enviarEstado(-1, document.getElementById("modoSelect").value);
+}
+async function estender() {
+  if (estadoAtual.etapa === -1 || estadoAtual.etapa === "fim") return;
+  const restanteSeg = Math.max(0, estadoAtual.duracaoSeg - (Date.now() - estadoAtual.iniciadoEm) / 1000);
+  await fetch("/api/estado", {
+    method: "POST", headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ etapa: estadoAtual.etapa, duracaoSeg: restanteSeg + 30, modo: estadoAtual.modo }),
+  });
+  carregarEstado();
+}
+
+// ---------- contagem de respondentes ----------
+
+function marcacoesTriagemDe(v) {
+  const r = v.respostas || {};
+  return CATALOGO.filter(d => r[d.id] && r[d.id][TRIAGEM_CRITERIO_ID] === 1).length;
+}
+function criteriosRespondidos(v, dorId) {
+  const r = (v.respostas || {})[dorId] || {};
+  return CRITERIOS.filter(c => r[c.id] >= 1).length;
+}
+
+function renderContagem() {
+  const entraram = ultimosVotos.length;
+  document.getElementById("kpiEntraram").textContent = entraram;
+  const numEl = document.getElementById("kpiResponderam");
+  const lblEl = document.getElementById("kpiResponderamLbl");
+  const faltamEl = document.getElementById("kpiFaltam");
+  const nomesEl = document.getElementById("kpiFaltamNomes");
+  const e = estadoAtual;
+
+  if (e.etapa === -1 || e.etapa === "fim") {
+    numEl.textContent = "—"; faltamEl.textContent = "—"; nomesEl.textContent = "";
+    lblEl.textContent = "responderam a etapa atual";
+    return;
+  }
+  let completos = [], parciais = [], pendentes = [];
+  if (e.modo === "triagem") {
+    ultimosVotos.forEach(v => {
+      const n = marcacoesTriagemDe(v);
+      if (n >= ORCAMENTO_VOTOS_TRIAGEM) completos.push(v); else if (n > 0) parciais.push(v); else pendentes.push(v);
+    });
+    lblEl.textContent = `usaram as ${ORCAMENTO_VOTOS_TRIAGEM} marcações` + (parciais.length ? ` (+${parciais.length} marcando)` : "");
+  } else {
+    const dor = DORES[e.etapa];
+    if (!dor) return;
+    ultimosVotos.forEach(v => {
+      const n = criteriosRespondidos(v, dor.id);
+      if (n >= CRITERIOS.length) completos.push(v); else if (n > 0) parciais.push(v); else pendentes.push(v);
+    });
+    lblEl.textContent = `responderam os 3 critérios da dor ${e.etapa + 1}` + (parciais.length ? ` (+${parciais.length} no meio)` : "");
+  }
+  numEl.textContent = completos.length + " de " + entraram;
+  faltamEl.textContent = entraram - completos.length;
+  const faltando = [...parciais.map(v => v.nome + " (parcial)"), ...pendentes.map(v => v.nome)];
+  nomesEl.textContent = faltando.length ? "Faltam: " + faltando.join(", ") : (entraram ? "Todos responderam ✅" : "");
+}
+
+// ---------- resultados ----------
+
+async function carregar() {
+  try {
+    const res = await fetch("/api/results", { cache: "no-store" });
+    const data = await res.json();
+    ultimosVotos = (data.votos || []).filter(v => v && v.nome);
+    renderTabela(ultimosVotos);
+    renderHeatmap();
+    renderTriagem(ultimosVotos);
+    renderContagem();
+    document.getElementById("status").textContent =
+      ultimosVotos.length + " pessoa(s) entraram na dinâmica — atualizado " + new Date().toLocaleTimeString("pt-BR");
+  } catch (e) {
+    document.getElementById("status").textContent = "Erro ao carregar. Tentando de novo...";
+  }
+}
+
+// Rodada 1: marcações e pontos (marcações × peso de transversalidade)
+function calcularTriagem(votos) {
+  const participantes = votos.filter(v => marcacoesTriagemDe(v) > 0).length;
+  const linhas = CATALOGO.map((dor, i) => {
+    let marcacoes = 0;
+    votos.forEach(v => {
+      const r = v.respostas && v.respostas[dor.id];
+      if (r && r[TRIAGEM_CRITERIO_ID] === 1) marcacoes++;
+    });
+    const mult = multiplicadorProcessos(processosDaDor(dor).length);
+    return { dor, numeroTriagem: i + 1, marcacoes, mult, pontos: +(marcacoes * mult).toFixed(2) };
+  });
+  return { linhas, totalParticipantes: participantes };
+}
+
+function ordenarTriagem(linhas) {
+  // pontos desc; empate → mais marcações; depois ordem do banco
+  return linhas.sort((a, b) => b.pontos - a.pontos || b.marcacoes - a.marcacoes || a.numeroTriagem - b.numeroTriagem);
+}
+
+function renderTriagem(votos) {
+  const { linhas, totalParticipantes } = calcularTriagem(votos);
+  const comVoto = ordenarTriagem(linhas.filter(l => l.marcacoes > 0));
+  const tbody = document.getElementById("triagemBody");
+  if (comVoto.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="5" class="vazio">Ainda sem votos de triagem.</td></tr>`;
+    return;
+  }
+  const n = Math.max(1, Number(document.getElementById("topNInput").value) || 12);
+  tbody.innerHTML = comVoto.map((l, pos) => {
+    const { cor, bg } = corDaDor(l.dor);
+    const dentro = pos < n;
+    return `<tr class="${dentro ? "" : "fora-corte"}">
+      <td class="mono">${pos + 1}º</td>
+      <td class="dor-texto">
+        <span class="area-tag" style="--areacolor:${cor};--areabg:${bg}">${esc(rotuloArea(l.dor))}</span>
+        <div>${esc(l.dor.texto)}</div>
+      </td>
+      <td class="criterio-cell">${l.marcacoes}<div class="dist">de ${totalParticipantes} pessoa(s)</div></td>
+      <td class="criterio-cell">${formatarMult(l.mult)}</td>
+      <td class="criterio-cell"><span class="score">${String(l.pontos).replace(".", ",")}</span></td>
+    </tr>` + (pos === n - 1 && comVoto.length > n ? `<tr><td colspan="5" class="linha-corte">— linha de corte (top ${n}) —</td></tr>` : "");
+  }).join("");
+}
+
+function aplicarCorteTriagem() {
+  const n = Math.max(1, Number(document.getElementById("topNInput").value) || 12);
+  const { linhas } = calcularTriagem(ultimosVotos);
+  const comVoto = ordenarTriagem(linhas.filter(l => l.marcacoes > 0));
+  if (comVoto.length === 0) { alert("Ainda não há votos de triagem para basear o corte."); return; }
+  const mantidos = new Set(comVoto.slice(0, n).map(l => l.dor.id));
+  // Mantidas = top N por pontos; todas as demais ficam desmarcadas.
+  CATALOGO.forEach(d => { d.selecionada = mantidos.has(d.id); });
+  // Coloca as mantidas no topo, na ordem do ranking — vira a ordem (e a numeração) da Rodada 2.
+  const ordem = comVoto.slice(0, n).map(l => l.dor.id);
+  CATALOGO.sort((a, b) => {
+    const ia = ordem.indexOf(a.id), ib = ordem.indexOf(b.id);
+    return (ia === -1 ? 999 : ia) - (ib === -1 ? 999 : ib);
+  });
+  DORES = CATALOGO.filter(d => d.selecionada !== false);
+  renderCatalogo();
+  statusCatalogo(` · corte aplicado (top ${n}, na ordem do ranking) — confira e clique em Salvar`);
+  document.getElementById("catalogoBody").scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+// Moda com regra de empate escolhida pelo facilitador.
+function moda(valores) {
+  const contagem = {};
+  valores.forEach(v => contagem[v] = (contagem[v] || 0) + 1);
+  if (valores.length === 0) return null;
+  const max = Math.max(...Object.values(contagem));
+  const modas = Object.keys(contagem).filter(k => contagem[k] === max).map(Number).sort((a, b) => a - b);
+  const regra = document.getElementById("regraEmpate").value;
+  let valor = modas[0];
+  if (regra === "maior") valor = modas[modas.length - 1];
+  if (regra === "media") valor = modas.reduce((s, x) => s + x, 0) / modas.length;
+  return { valor, empate: modas.length > 1, empatadas: modas, distribuicao: contagem, n: valores.length };
+}
+
+function fmt(n) { return String(+n.toFixed(1)).replace(".", ","); }
+
+function calcularLinhas(votos) {
+  return DORES.map((dor, i) => {
+    const porCriterio = {};
+    CRITERIOS.forEach(c => { porCriterio[c.id] = []; });
+    let completos = 0;
+    votos.forEach(v => {
+      const r = v.respostas && v.respostas[dor.id];
+      if (!r) return;
+      CRITERIOS.forEach(c => { if (r[c.id] >= 1) porCriterio[c.id].push(r[c.id]); });
+      if (CRITERIOS.every(c => r[c.id] >= 1)) completos++;
+    });
+    const modas = {};
+    CRITERIOS.forEach(c => { modas[c.id] = moda(porCriterio[c.id]); });
+    const faltando = CRITERIOS.filter(c => !modas[c.id]).map((c, k) => "C" + (CRITERIOS.indexOf(c) + 1));
+    const temAlgum = CRITERIOS.some(c => modas[c.id]);
+    const mult = multiplicadorProcessos(processosDaDor(dor).length);
+    let base = null, score = null;
+    if (faltando.length === 0) {
+      base = CRITERIOS.reduce((s, c) => s + modas[c.id].valor * c.peso, 0);
+      score = +(base * mult).toFixed(1);
+    }
+    return { dor, numero: i + 1, modas, completos, temAlgum, faltando, mult, base, score };
+  });
+}
+
+function renderTabela(votos) {
+  document.getElementById("theadResultados").innerHTML = `<tr>
+    <th style="width:40px">Nº</th><th>Dor</th>
+    ${CRITERIOS.map((c, i) => `<th class="criterio-cell">C${i + 1} · ${esc(c.titulo)}<br/><span style="font-weight:400">(×${c.peso})</span></th>`).join("")}
+    <th class="criterio-cell">Score final</th><th class="criterio-cell">Votos</th></tr>`;
+
+  const linhas = calcularLinhas(votos);
+  ultimasLinhas = linhas;
+  linhas.sort((a, b) => (b.score ?? -1) - (a.score ?? -1) || a.numero - b.numero);
+  const entraram = votos.length;
+
+  const cel = (m) => {
+    if (!m) return `<td class="criterio-cell"><span class="nota">sem voto</span></td>`;
+    const mini = `<table class="mini"><tr>${[1,2,3,4].map(v => `<td>${v}</td>`).join("")}</tr>
+      <tr>${[1,2,3,4].map(v => `<td class="${m.distribuicao[v] ? "tem" : ""}">${m.distribuicao[v] || 0}</td>`).join("")}</tr></table>`;
+    const titulo = m.empate ? `title="Empate entre as notas ${m.empatadas.join(" e ")}"` : "";
+    return `<td class="criterio-cell">
+      <div class="moda ${m.empate ? "empate" : ""}" ${titulo}>${fmt(m.valor)}${m.empate ? " *" : ""}</div>
+      ${mini}
+    </td>`;
+  };
+
+  document.getElementById("tbody").innerHTML = linhas.map(l => {
+    const { cor, bg } = corDaDor(l.dor);
+    let scoreHtml;
+    if (l.score !== null) {
+      scoreHtml = `<span class="score ${l.score >= 18 ? "alto" : ""}">${fmt(l.score)}</span>
+        <div class="dist">base ${fmt(l.base)} ${formatarMult(l.mult)}</div>`;
+    } else if (l.temAlgum) {
+      scoreHtml = `<span class="nota" style="color:var(--coral)">incompleto</span><div class="dist">falta voto em ${l.faltando.join(", ")}</div>`;
+    } else {
+      scoreHtml = `—`;
+    }
+    return `<tr>
+      <td class="mono" style="font-weight:600">${l.numero}</td>
+      <td class="dor-texto">
+        <span class="area-tag" style="--areacolor:${cor};--areabg:${bg}">${esc(rotuloArea(l.dor))}</span>
+        ${l.mult > 1 ? `<span class="transversal-badge">${formatarMult(l.mult)}</span>` : ""}
+        <div>${esc(l.dor.texto)}</div>
+      </td>
+      ${CRITERIOS.map(c => cel(l.modas[c.id])).join("")}
+      <td class="criterio-cell">${scoreHtml}</td>
+      <td class="criterio-cell votos-count">${l.completos} de ${entraram}</td>
+    </tr>`;
+  }).join("");
+}
+
+// Cores fixas (tema claro) — o PNG exportado precisa ficar certo em qualquer lugar.
+const HEAT = {
+  bg: "#FFFFFF", line: "#B8BFD0", textMuted: "#5A6178", text: "#1E2438",
+  okBg: "#E1F1E4", ok: "#3E8A4E", goldSoft: "#FCEBB0", gold: "#8A6408",
+  coralSoft: "#F6D6D1", coral: "#B93A2A", neutro: "#ECEEF3",
+};
+
+function renderHeatmap() {
+  const linhas = ultimasLinhas.filter(l => l.score !== null).sort((a, b) => a.numero - b.numero);
+  const W = 900, PAD_L = 56, PAD_R = 24, PAD_T = 24, CH = 380; // CH = altura da área do gráfico
+  const yMin = 5, yMax = 32;        // score final vai de 6 a 31,2
+  const xCorte = 2.5, yCorte = 15;  // meio de cada escala (referência)
+  const x = (c3) => PAD_L + ((c3 - 1) / 3) * (W - PAD_L - PAD_R - 40) + 20;
+  const y = (s) => PAD_T + (1 - (Math.min(Math.max(s, yMin), yMax) - yMin) / (yMax - yMin)) * CH;
+  const xL = PAD_L, xR = W - PAD_R, yT = PAD_T, yB = PAD_T + CH;
+
+  // legenda (dentro do SVG, para sair junto no PNG)
+  const colunas = 2, linhaH = 18, colW = (W - PAD_L - PAD_R) / colunas;
+  const nLinhasLeg = Math.ceil(linhas.length / colunas);
+  const H = yB + 50 + (linhas.length ? 24 + nLinhasLeg * linhaH : 0) + 16;
+
+  let s = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${W} ${H}" style="width:100%;height:auto;max-width:${W}px;border:1px solid #DCE0EA;border-radius:12px" font-family="Arial,sans-serif">`;
+  s += `<rect width="${W}" height="${H}" fill="${HEAT.bg}"/>`;
+  const xc = x(xCorte), yc = y(yCorte);
+  s += `<rect x="${xc}" y="${yT}" width="${xR - xc}" height="${yc - yT}" fill="${HEAT.okBg}"/>`;
+  s += `<rect x="${xL}" y="${yT}" width="${xc - xL}" height="${yc - yT}" fill="${HEAT.goldSoft}"/>`;
+  s += `<rect x="${xc}" y="${yc}" width="${xR - xc}" height="${yB - yc}" fill="${HEAT.coralSoft}"/>`;
+  s += `<rect x="${xL}" y="${yc}" width="${xc - xL}" height="${yB - yc}" fill="${HEAT.neutro}"/>`;
+  s += `<line x1="${xc}" y1="${yT}" x2="${xc}" y2="${yB}" stroke="${HEAT.line}" stroke-dasharray="4 4"/>`;
+  s += `<line x1="${xL}" y1="${yc}" x2="${xR}" y2="${yc}" stroke="${HEAT.line}" stroke-dasharray="4 4"/>`;
+  s += `<text x="${xc + 8}" y="${yT + 16}" font-size="12" fill="${HEAT.ok}" font-weight="bold">Prioridade máxima</text>`;
+  s += `<text x="${xL + 8}" y="${yT + 16}" font-size="12" fill="${HEAT.gold}" font-weight="bold">Mapear primeiro</text>`;
+  s += `<text x="${xc + 8}" y="${yB - 8}" font-size="12" fill="${HEAT.coral}" font-weight="bold">Avaliar (C3 alto, score baixo)</text>`;
+  s += `<text x="${xL + 8}" y="${yB - 8}" font-size="12" fill="${HEAT.textMuted}" font-weight="bold">Desprioritizar</text>`;
+  // eixo y: marcas
+  [6, 10, 15, 20, 25, 30].forEach(v => {
+    s += `<text x="${xL - 8}" y="${y(v) + 4}" font-size="10" text-anchor="end" fill="${HEAT.textMuted}">${v}</text>`;
+  });
+  // eixo x: marcas 1-4
+  [1, 2, 3, 4].forEach(v => {
+    s += `<text x="${x(v)}" y="${yB + 16}" font-size="10" text-anchor="middle" fill="${HEAT.textMuted}">${v}</text>`;
+  });
+  s += `<text x="${(xL + xR) / 2}" y="${yB + 34}" font-size="12" text-anchor="middle" fill="${HEAT.textMuted}">Potencial de automação (moda C3) →</text>`;
+  s += `<text x="16" y="${(yT + yB) / 2}" font-size="12" text-anchor="middle" fill="${HEAT.textMuted}" transform="rotate(-90 16 ${(yT + yB) / 2})">Score final →</text>`;
+
+  // pontos (bolinhas no mesmo lugar ficam lado a lado)
+  const grupos = {};
+  linhas.forEach(l => {
+    const k = l.modas.c3.valor + "|" + Math.round(l.score);
+    (grupos[k] = grupos[k] || []).push(l);
+  });
+  Object.values(grupos).forEach(g => {
+    g.forEach((l, k) => {
+      const cx = x(l.modas.c3.valor) + (k - (g.length - 1) / 2) * 22;
+      const cy = y(l.score);
+      const cor = corDaDor(l.dor).hex;
+      s += `<circle cx="${cx}" cy="${cy}" r="10" fill="${cor}" stroke="#fff" stroke-width="1.5"/>`;
+      s += `<text x="${cx}" y="${cy + 4}" font-size="10" font-weight="bold" text-anchor="middle" fill="#fff">${l.numero}</text>`;
+    });
+  });
+
+  // legenda
+  if (linhas.length) {
+    let ly = yB + 60;
+    s += `<text x="${xL}" y="${ly}" font-size="12" font-weight="bold" fill="${HEAT.text}">Legenda (nº · score · dor)</text>`;
+    ly += 8;
+    const maxChars = 62;
+    linhas.forEach((l, i) => {
+      const col = Math.floor(i / nLinhasLeg), row = i % nLinhasLeg;
+      const lx = xL + col * colW, yy = ly + (row + 1) * linhaH;
+      const cor = corDaDor(l.dor).hex;
+      let txt = l.dor.texto;
+      if (txt.length > maxChars) txt = txt.slice(0, maxChars - 1) + "…";
+      s += `<circle cx="${lx + 7}" cy="${yy - 4}" r="7" fill="${cor}"/>`;
+      s += `<text x="${lx + 7}" y="${yy - 1}" font-size="8" font-weight="bold" text-anchor="middle" fill="#fff">${l.numero}</text>`;
+      s += `<text x="${lx + 20}" y="${yy}" font-size="11" fill="${HEAT.text}"><tspan font-weight="bold">${fmt(l.score)}</tspan> · ${esc(txt)}</text>`;
+    });
+  }
+  // cores
+  const legCores = [["PJ", "#B96A44"], ["PF", "#2E8484"], ["EF", "#4A5A8C"], ["Transversal", "#7C5295"]];
+  let cx0 = xR - 330;
+  legCores.forEach(([n, c]) => {
+    s += `<circle cx="${cx0}" cy="${yB + 56}" r="5" fill="${c}"/><text x="${cx0 + 9}" y="${yB + 60}" font-size="11" fill="${HEAT.textMuted}">${n}</text>`;
+    cx0 += n.length * 7 + 30;
+  });
+
+  if (!linhas.length) s += `<text x="${(xL + xR) / 2}" y="${(yT + yB) / 2}" font-size="13" text-anchor="middle" fill="${HEAT.textMuted}">Ainda sem dores com os 3 critérios votados.</text>`;
+  s += `</svg>`;
+  document.getElementById("heatmap").innerHTML = s;
+}
+
+// ---------- exportação ----------
+
+function exportarPDF() {
+  document.getElementById("printMeta").textContent =
+    `Gerado em ${new Date().toLocaleString("pt-BR")} · ${ultimosVotos.length} participante(s) · empate na moda: ${document.getElementById("regraEmpate").selectedOptions[0].text}`;
+  document.title = "Relatorio-Priorizacao-Dores-CGPI-" + new Date().toISOString().slice(0, 10);
+  window.print();
+}
+
+function exportarHeatmapPNG() {
+  const svgEl = document.querySelector("#heatmap svg");
+  if (!svgEl) { alert("Ainda não há dados para gerar o mapa de calor."); return; }
+  const vb = svgEl.viewBox.baseVal;
+  const svgStr = new XMLSerializer().serializeToString(svgEl);
+  const url = URL.createObjectURL(new Blob([svgStr], { type: "image/svg+xml;charset=utf-8" }));
+  const img = new Image();
+  img.onload = () => {
+    const escala = 2;
+    const canvas = document.createElement("canvas");
+    canvas.width = vb.width * escala;
+    canvas.height = vb.height * escala;
+    const ctx = canvas.getContext("2d");
+    ctx.fillStyle = "#FFFFFF";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+    URL.revokeObjectURL(url);
+    canvas.toBlob((blob) => {
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = "mapa-calor-priorizacao-cgpi.png";
+      a.click();
+    }, "image/png");
+  };
+  img.onerror = () => { alert("Não foi possível gerar a imagem. Tente de novo."); URL.revokeObjectURL(url); };
+  img.src = url;
+}
+
+async function resetarVotos() {
+  if (!confirm("Isso apaga TODOS os votos registrados até agora e volta todos para 'aguardando'. Use só para limpar testes antes do dia da oficina. Confirmar?")) return;
+  await fetch("/api/reset", { method: "POST" });
+  carregar();
+  carregarEstado();
+}
+</script>
+</body>
+</html>
