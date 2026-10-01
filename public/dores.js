@@ -125,3 +125,33 @@ const LOGO_CGPI = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAP0AAACMCAMAAAC
 function esc(s) {
   return String(s == null ? "" : s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 }
+
+// ----------------------------------------------------------------------------
+// Etapa + contexto de cada dor (texto oficial da Oficina de priorização,
+// editável no painel). A etapa fica sempre visível; o contexto abre no botão ⓘ.
+function temDetalheDor(dor) {
+  return !!(dor && (dor.etapa || dor.contexto));
+}
+
+function htmlEtapaDor(dor) {
+  return dor && dor.etapa ? `<div class="etapa-linha">Etapa: <b>${esc(dor.etapa)}</b></div>` : "";
+}
+
+function htmlPainelInfo(dor) {
+  const onde = Array.isArray(dor.onde) && dor.onde.length
+    ? `<div class="info-onde"><div class="info-lab">Onde aparece</div>${dor.onde.map(o =>
+        `<div class="info-onde-row"><span class="info-proc info-proc-${esc(o[0])}">${esc(o[0])}</span><span>${esc(o[1])}</span></div>`).join("")}</div>`
+    : "";
+  const ctx = dor.contexto ? `<p class="info-ctx">${esc(dor.contexto)}</p>` : "";
+  return `<div class="info-painel" id="info-${esc(dor.id)}" hidden onclick="event.stopPropagation()">${ctx}${onde}</div>`;
+}
+
+// Abre/fecha o painel de contexto de uma dor (sem acionar o voto do card).
+function alternarInfo(doreId, ev) {
+  if (ev) { ev.stopPropagation(); ev.preventDefault(); }
+  const painel = document.getElementById("info-" + doreId);
+  if (!painel) return;
+  painel.hidden = !painel.hidden;
+  const btn = document.getElementById("btn-info-" + doreId);
+  if (btn) btn.setAttribute("aria-expanded", painel.hidden ? "false" : "true");
+}

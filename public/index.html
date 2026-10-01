@@ -122,7 +122,7 @@
   .contador-triagem .num{ font-family:'IBM Plex Mono',monospace; font-weight:700; font-size:1.2rem; }
   .contador-triagem .num.cheio{ color:var(--coral); }
   .contador-triagem .aviso{ font-size:.78rem; color:var(--coral); margin-top:2px; min-height:1.1em; }
-  .lista-triagem{ display:grid; grid-template-columns:repeat(auto-fill, minmax(300px, 1fr)); gap:8px; }
+  .lista-triagem{ display:grid; grid-template-columns:repeat(auto-fill, minmax(300px, 1fr)); gap:8px; align-items:start; }
   .item-triagem{
     display:flex; align-items:flex-start; gap:10px; cursor:pointer; user-select:none;
     background:var(--surface); border:1.5px solid var(--line); border-radius:12px;
@@ -140,6 +140,26 @@
     display:block; font-family:'IBM Plex Mono',monospace; font-size:.62rem; font-weight:600;
     letter-spacing:.04em; text-transform:uppercase; color:var(--areacolor, var(--text-faint)); margin-bottom:3px;
   }
+  .etapa-linha{ font-size:.74rem; color:var(--text-muted); margin:2px 0 4px; }
+  .etapa-linha b{ color:var(--text); font-weight:600; }
+  .btn-info{
+    flex:none; width:26px; height:26px; padding:0; border-radius:50%; font-size:.85rem; line-height:1;
+    background:var(--surface-2); color:var(--azul-brand); border:1.5px solid var(--line); font-weight:700;
+  }
+  .btn-info[aria-expanded="true"]{ background:var(--azul-brand); color:#fff; border-color:var(--azul-brand); }
+  .btn-info-rotulo{ width:auto; height:auto; border-radius:999px; padding:6px 14px; font-size:.82rem; margin:-6px 0 14px; }
+  .info-painel{
+    margin-top:8px; padding:10px 12px; border-radius:10px; background:var(--surface-2);
+    border:1px solid var(--line); font-size:.82rem; line-height:1.45; color:var(--text); cursor:default; user-select:text;
+  }
+  .info-painel[hidden]{ display:none; }
+  .card > .info-painel{ margin:-4px 0 16px; }
+  .info-ctx{ margin:0 0 8px; }
+  .info-lab{ font-family:'IBM Plex Mono',monospace; font-size:.62rem; text-transform:uppercase; letter-spacing:.04em; color:var(--text-faint); margin-bottom:4px; }
+  .info-onde-row{ display:flex; gap:8px; align-items:baseline; margin-bottom:3px; font-size:.78rem; color:var(--text-muted); }
+  .info-proc{ flex:none; font-family:'IBM Plex Mono',monospace; font-size:.62rem; font-weight:700; padding:1px 6px; border-radius:999px; color:#fff; }
+  .info-proc-PJ{ background:var(--pj); } .info-proc-PF{ background:var(--pf); } .info-proc-EF{ background:var(--ef); }
+  @media (min-width: 900px){ .card .info-painel{ font-size:.9rem; } }
   #screen-dor.tempo-esgotado{ pointer-events:none; opacity:.55; }
   .screen{ display:none; }
   .screen.active{ display:block; }
@@ -428,7 +448,9 @@ function renderDorAtual(etapa) {
   html += `<div class="card">
     <div class="dor-num">DOR Nº ${numeroDaDor(dor, etapa)} · ${etapa + 1}ª de ${DORES.length} desta rodada</div>
     <span class="area" style="--areacolor:${cor};--areabg:${bg}">${esc(rotuloArea(dor))}</span>
+    ${htmlEtapaDor(dor)}
     <h2>${esc(dor.texto)}</h2>
+    ${temDetalheDor(dor) ? `<button type="button" class="btn-info btn-info-rotulo" id="btn-info-${dor.id}" aria-expanded="false" onclick="alternarInfo('${dor.id}', event)">ⓘ Ver contexto desta dor</button>${htmlPainelInfo(dor)}` : ""}
     <div class="criterios-grid">`;
 
   CRITERIOS.forEach((crit, ci) => {
@@ -469,7 +491,8 @@ function renderTelaTriagem() {
     const sel = !!(respostasLocais[dor.id] && respostasLocais[dor.id][TRIAGEM_CRITERIO_ID] === 1);
     html += `<div class="item-triagem${sel ? " selecionada" : ""}" id="triagem-${dor.id}" onclick="alternarTriagem('${dor.id}')">
       <div class="marca">✓</div>
-      <div class="txt"><span class="area-mini" style="--areacolor:${cor}">Nº ${numeroDaDor(dor, i)} · ${esc(rotuloArea(dor))}</span>${esc(dor.texto)}</div>
+      <div class="txt"><span class="area-mini" style="--areacolor:${cor}">Nº ${numeroDaDor(dor, i)} · ${esc(rotuloArea(dor))}</span>${esc(dor.texto)}${htmlEtapaDor(dor)}${temDetalheDor(dor) ? htmlPainelInfo(dor) : ""}</div>
+      ${temDetalheDor(dor) ? `<button type="button" class="btn-info" id="btn-info-${dor.id}" aria-expanded="false" title="Ver contexto" aria-label="Ver contexto da dor ${numeroDaDor(dor, i)}" onclick="alternarInfo('${dor.id}', event)">i</button>` : ""}
     </div>`;
   });
   html += `</div>`;

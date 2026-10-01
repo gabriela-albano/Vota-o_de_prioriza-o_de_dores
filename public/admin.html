@@ -214,7 +214,7 @@
     </p>
     <div class="controle-topo" style="margin-top:6px">
       <label>Manter as top <input type="number" id="topNInput" value="12" min="1" style="width:60px" /> dores</label>
-      <button class="ghost" onclick="aplicarCorteTriagem()">Aplicar corte à seleção (depois clique em Salvar em "Gerenciar dores")</button>
+      <button class="ghost" onclick="aplicarCorteTriagem()">Aplicar corte (marca as top N como Ativas e salva)</button>
     </div>
     <table>
       <thead>
@@ -228,7 +228,7 @@
   <div class="panel no-print">
     <h3>Gerenciar dores (banco editável)</h3>
     <p class="nota">
-      "Ativa" = entra na Rodada 2, na ordem desta lista. O "Nº" é o número fixo do card (o mesmo da Oficina de priorização) e não muda com o corte; "Ordem R2" é a posição na rodada. Os processos marcados definem o peso (1 processo ×1,0 · 2 processos ×1,2 · 3 processos ×1,3). Nada vale até clicar em "💾 Salvar alterações".
+      "Ativa" = entra na Rodada 2, na ordem desta lista. O "Aplicar corte" já salva sozinho; para outras mudanças, clique em "💾 Salvar alterações" (ou, ao iniciar a rodada, elas são salvas automaticamente). O "Nº" é o número fixo do card (o mesmo da Oficina de priorização) e não muda com o corte; "Ordem R2" é a posição na rodada. Os processos marcados definem o peso (1 processo ×1,0 · 2 processos ×1,2 · 3 processos ×1,3). Nada vale até clicar em "💾 Salvar alterações".
     </p>
     <div class="controle-topo" style="margin-top:10px">
       <button class="ghost" onclick="selecionarTodas(true)">☑ Selecionar todas</button>
@@ -245,6 +245,8 @@
             <th style="width:44px">Nº</th><th style="width:44px">Ordem R2</th>
             <th style="width:130px">Área (rótulo livre)</th>
             <th>Texto da dor</th>
+            <th style="width:150px">Etapa</th>
+            <th style="width:300px">Contexto (abre no ⓘ)</th>
             <th style="width:150px">Processos → peso</th>
             <th style="width:40px"></th>
           </tr>
@@ -307,6 +309,7 @@ let estadoAtual = { etapa: -1, duracaoSeg: 120, iniciadoEm: null, modo: "complet
 let tickInt = null;
 let CATALOGO = []; // todas as dores do banco (inclusive desmarcadas)
 let DORES = [];    // só as "Ativas" — Rodada 2, nesta ordem (define o nº de cada dor)
+let catalogoSujo = false; // há alterações em "Gerenciar dores" ainda não salvas
 let ultimosVotos = [];
 let ultimasLinhas = [];
 
@@ -349,6 +352,7 @@ async function carregarCatalogo() {
     CATALOGO = data.dores || [];
     DORES = CATALOGO.filter(d => d.selecionada !== false);
     aplicarCriteriosDoServidor(data.criterios);
+    catalogoSujo = false;
     renderCatalogo();
     renderEditorCriterios();
   } catch (e) {
@@ -375,6 +379,8 @@ function renderCatalogo() {
       <td class="mono" style="text-align:center">${num}</td>
       <td><input type="text" class="campo" value="${esc(d.area)}" onchange="editarCampo(${i},'area',this.value)" /></td>
       <td><textarea class="campo" style="min-height:40px;resize:vertical" onchange="editarCampo(${i},'texto',this.value)">${esc(d.texto)}</textarea></td>
+      <td><input type="text" class="campo" value="${esc(d.etapa)}" onchange="editarCampo(${i},'etapa',this.value)" /></td>
+      <td><textarea class="campo" style="min-height:64px;resize:vertical" onchange="editarCampo(${i},'contexto',this.value)">${esc(d.contexto)}</textarea></td>
       <td style="white-space:nowrap">
         ${PROCESSOS_VALIDOS.map(p => `<label style="display:inline-flex;align-items:center;gap:2px;font-size:.74rem;margin-right:6px">
           <input type="checkbox" ${ps.includes(p) ? "checked" : ""} onchange="toggleProcesso(${i},'${p}',this.checked)" />${p}</label>`).join("")}
@@ -390,22 +396,26 @@ function toggleProcesso(i, processo, marcado) {
   const atuais = new Set(processosDaDor(CATALOGO[i]));
   if (marcado) atuais.add(processo); else atuais.delete(processo);
   CATALOGO[i].processos = PROCESSOS_VALIDOS.filter(p => atuais.has(p));
+  catalogoSujo = true;
   renderCatalogo();
   statusCatalogo(" — lembre de Salvar");
 }
 
 function editarCampo(i, campo, valor) {
   CATALOGO[i][campo] = valor;
+  catalogoSujo = true;
   if (campo === "selecionada") { renderCatalogo(); statusCatalogo(" — lembre de Salvar"); }
 }
 
 function selecionarTodas(valor) {
   CATALOGO.forEach(d => d.selecionada = valor);
+  catalogoSujo = true;
   renderCatalogo();
   statusCatalogo(" — lembre de Salvar");
 }
 
 function adicionarDor() {
+  catalogoSujo = true;
   CATALOGO.push({ id: "dor-nova-" + Date.now(), numero: Math.max(0, ...CATALOGO.map(d => Number(d.numero) || 0)) + 1, area: "", texto: "", processos: [], selecionada: true });
   renderCatalogo();
   document.getElementById("catalogoBody").lastElementChild.scrollIntoView({ behavior: "smooth", block: "center" });
@@ -414,6 +424,7 @@ function adicionarDor() {
 function removerDor(i) {
   if (!confirm("Remover esta dor do banco? Os votos já registrados não são apagados, mas ela some da lista e das próximas rodadas.")) return;
   CATALOGO.splice(i, 1);
+  catalogoSujo = true;
   renderCatalogo();
   statusCatalogo(" — lembre de Salvar");
 }
@@ -428,11 +439,14 @@ async function salvarCatalogo() {
     const data = await res.json();
     CATALOGO = data.dores || dores;
     DORES = CATALOGO.filter(d => d.selecionada !== false);
+    catalogoSujo = false;
     renderCatalogo();
     statusCatalogo(" · salvo ✅");
     carregar();
+    return true;
   } catch (e) {
     document.getElementById("catalogoStatus").textContent = "Erro ao salvar. Tente de novo.";
+    return false;
   }
 }
 
@@ -510,7 +524,7 @@ function renderEstado() {
       return;
     }
     rotulo = `${rotuloModo} · dor Nº ${numeroDaDor(dor, estadoAtual.etapa)} (${estadoAtual.etapa + 1}ª de ${DORES.length}) · ${esc(rotuloArea(dor))}`;
-    texto = esc(dor.texto);
+    texto = esc(dor.texto) + (dor.etapa ? `<div class="nota" style="margin:4px 0 0">Etapa: ${esc(dor.etapa)}</div>` : "");
   }
   const tick = () => {
     const restante = Math.max(0, Math.ceil(estadoAtual.duracaoSeg - (Date.now() - estadoAtual.iniciadoEm) / 1000));
@@ -538,7 +552,14 @@ async function enviarEstado(etapa, modoForcado) {
 
 async function iniciar() {
   const modo = document.getElementById("modoSelect").value;
-  await carregarCatalogo(); // garante a lista salva mais recente (corte da triagem)
+  // Alterações pendentes em "Gerenciar dores" (ex.: corte da triagem) são SALVAS antes de
+  // iniciar — nunca descartadas. Só recarrega do servidor se não houver nada pendente.
+  if (catalogoSujo) {
+    const ok = await salvarCatalogo();
+    if (!ok) { alert("Não consegui salvar as alterações em 'Gerenciar dores'. A rodada NÃO foi iniciada — tente salvar de novo."); return; }
+  } else {
+    await carregarCatalogo();
+  }
   if (modo === "completa" && DORES.length === 0) { alert("Nenhuma dor ativa. Marque as dores em 'Gerenciar dores' e salve."); return; }
   enviarEstado(0, modo);
 }
@@ -689,7 +710,10 @@ function aplicarCorteTriagem() {
   CATALOGO.sort((a, b) => (Number(a.numero) || 999) - (Number(b.numero) || 999));
   DORES = CATALOGO.filter(d => d.selecionada !== false);
   renderCatalogo();
-  statusCatalogo(` · corte aplicado (top ${n}, na ordem do fluxo) — confira e clique em Salvar`);
+  catalogoSujo = true;
+  salvarCatalogo().then(ok => {
+    statusCatalogo(ok ? ` · corte aplicado e SALVO (top ${n}) ✅ — a Rodada 2 terá só estas dores` : " · corte aplicado, mas NÃO salvou — clique em Salvar alterações");
+  });
   document.getElementById("catalogoBody").scrollIntoView({ behavior: "smooth", block: "start" });
 }
 
